@@ -99,6 +99,7 @@
     border-bottom:1.5px solid var(--line);
   }
   label input:focus{ outline:none; border-bottom-color:var(--accent); }
+  .field-error{ color:var(--accent); font-size:.8rem; margin:-0.7rem 0 1.1rem; }
 
   .btn-primary{
     display:block;
@@ -343,8 +344,9 @@
           <input type="text" id="nachname" autocomplete="family-name" required>
         </label>
         <label>Klasse
-          <input type="text" id="klasse" placeholder="z. B. 10a" required>
+          <input type="text" id="klasse" placeholder="z. B. 9b oder 12" pattern="^(?:8|9|10|11)[A-Za-z]$|^(?:12|13)$" required>
         </label>
+        <p id="klasseError" class="field-error" hidden>Bitte im Format 9b eingeben (Klasse 8–11 mit Buchstabe) oder 12 (Klasse 12–13 ohne Buchstabe).</p>
         <label>Geburtsdatum
           <input type="date" id="geburtsdatum" required>
         </label>
@@ -560,6 +562,10 @@ function parseJahrgang(klasse){
   return (num>=5 && num<=13) ? num : null;
 }
 
+// Klasse 8-11: Zahl + genau ein Buchstabe (z. B. "9b").
+// Klasse 12-13: nur die Zahl, kein Buchstabe (z. B. "12").
+const KLASSE_PATTERN = /^(?:8|9|10|11)[A-Za-z]$|^(?:12|13)$/;
+
 async function getRecord(key){
   if(!FIREBASE_READY) return null;
   try{
@@ -640,6 +646,10 @@ function showBlocked(){
 }
 
 // --- Step 1: Anmeldedaten ---
+document.getElementById("klasse").addEventListener("input", ()=>{
+  document.getElementById("klasseError").hidden = true;
+});
+
 document.getElementById("formIntro").addEventListener("submit", async e=>{
   e.preventDefault();
   const submitBtn = e.target.querySelector("button[type=submit]");
@@ -654,6 +664,14 @@ document.getElementById("formIntro").addEventListener("submit", async e=>{
   state.jahrgang = parseJahrgang(state.klasse);
 
   if(!isTestProfile()){
+    if(!KLASSE_PATTERN.test(state.klasse)){
+      document.getElementById("klasseError").hidden = false;
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Weiter";
+      return;
+    }
+    document.getElementById("klasseError").hidden = true;
+
     const existing = await getRecord(state.key);
 
     if(existing && existing.completed){
