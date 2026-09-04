@@ -519,12 +519,31 @@ let db = null;
 try{
   firebase.initializeApp(firebaseConfig);
   db = firebase.firestore();
+  // Hilft auf Schul-/Firmennetzwerken mit strengen Proxys, bei denen
+  // Firestore sonst gelegentlich hängen bleibt.
+  db.settings({ experimentalAutoDetectLongPolling: true, merge: true });
   FIREBASE_READY = true;
 }catch(e){
   console.error("Firebase-Initialisierung fehlgeschlagen", e);
 }
 
 const VOTES_COLLECTION = "votes";
+
+// Läuft eine Firestore-Anfrage länger als das Zeitlimit, wird trotzdem
+// weitergemacht statt dass die Seite hängen bleibt.
+function withTimeout(promise, ms){
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(()=>reject(new Error("Zeitüberschreitung")), ms))
+  ]);
+}
+
+// Test-Profil: kann beliebig oft abstimmen und wird nie gespeichert,
+// taucht also nirgendwo im Ergebnis auf.
+const TEST_KEY = "p|1|1|2026-01-01";
+function isTestProfile(){
+  return state.key === TEST_KEY;
+}
 
 function studentKey(v,n,k,g){
   return [v,n,k,g].map(s => String(s||"").trim().toLowerCase()).join("|");
@@ -544,7 +563,7 @@ function parseJahrgang(klasse){
 async function getRecord(key){
   if(!FIREBASE_READY) return null;
   try{
-    const snap = await db.collection(VOTES_COLLECTION).doc(docIdFromKey(key)).get();
+    const snap = await withTimeout(db.collection(VOTES_COLLECTION).doc(docIdFromKey(key)).get(), 8000);
     return snap.exists ? snap.data() : null;
   }catch(e){
     console.error("Laden fehlgeschlagen", e);
@@ -555,7 +574,7 @@ async function getRecord(key){
 async function saveRecord(record){
   if(!FIREBASE_READY) return false;
   try{
-    await db.collection(VOTES_COLLECTION).doc(docIdFromKey(record.key)).set(record);
+    await withTimeout(db.collection(VOTES_COLLECTION).doc(docIdFromKey(record.key)).set(record), 8000);
     return true;
   }catch(e){
     console.error("Speichern fehlgeschlagen", e);
@@ -566,7 +585,7 @@ async function saveRecord(record){
 async function deleteRecord(key){
   if(!FIREBASE_READY) return false;
   try{
-    await db.collection(VOTES_COLLECTION).doc(docIdFromKey(key)).delete();
+    await withTimeout(db.collection(VOTES_COLLECTION).doc(docIdFromKey(key)).delete(), 8000);
     return true;
   }catch(e){
     console.error("Löschen fehlgeschlagen", e);
@@ -577,7 +596,7 @@ async function deleteRecord(key){
 async function loadAllRecords(){
   if(!FIREBASE_READY) return [];
   try{
-    const snap = await db.collection(VOTES_COLLECTION).get();
+    const snap = await withTimeout(db.collection(VOTES_COLLECTION).get(), 8000);
     return snap.docs.map(d => d.data());
   }catch(e){
     console.error("Laden fehlgeschlagen", e);
@@ -634,27 +653,29 @@ document.getElementById("formIntro").addEventListener("submit", async e=>{
   state.key = studentKey(state.vorname, state.nachname, state.klasse, state.geburtsdatum);
   state.jahrgang = parseJahrgang(state.klasse);
 
-  const existing = await getRecord(state.key);
+  if(!isTestProfile()){
+    const existing = await getRecord(state.key);
 
-  if(existing && existing.completed){
-    showBlocked();
-    return;
-  }
+    if(existing && existing.completed){
+      showBlocked();
+      return;
+    }
 
-  if(!existing){
-    await saveRecord({
-      key: state.key,
-      vorname: state.vorname,
-      nachname: state.nachname,
-      klasse: state.klasse,
-      jahrgang: state.jahrgang,
-      region: null,
-      mayorVote: null,
-      councilVotes: {},
-      rating: null,
-      completed: false,
-      startedAt: new Date().toISOString()
-    });
+    if(!existing){
+      await saveRecord({
+        key: state.key,
+        vorname: state.vorname,
+        nachname: state.nachname,
+        klasse: state.klasse,
+        jahrgang: state.jahrgang,
+        region: null,
+        mayorVote: null,
+        councilVotes: {},
+        rating: null,
+        completed: false,
+        startedAt: new Date().toISOString()
+      });
+    }
   }
 
   submitBtn.disabled = false;
@@ -687,14 +708,23 @@ function renderRegions(){
 }
 
 document.getElementById("btnRegionNext").addEventListener("click", async ()=>{
+  const btn = document.getElementById("btnRegionNext");
+  btn.disabled = true;
+  const originalLabel = btn.textContent;
+  btn.textContent = "Wird geladen…";
+
   document.getElementById("mayorRegionName").textContent = state.region;
   document.getElementById("councilRegionName").textContent = state.region;
   renderMayor();
   renderCouncil();
 
-  const rec = await getRecord(state.key);
-  if(rec){ rec.region = state.region; await saveRecord(rec); }
+  if(!isTestProfile()){
+    const rec = await getRecord(state.key);
+    if(rec){ rec.region = state.region; await saveRecord(rec); }
+  }
 
+  btn.disabled = false;
+  btn.textContent = originalLabel;
   goToStep(2);
 });
 
@@ -813,15 +843,17 @@ document.getElementById("btnRatingNext").addEventListener("click", async ()=>{
   btn.disabled = true;
   btn.textContent = "Wird gespeichert…";
 
-  const rec = await getRecord(state.key);
-  if(rec){
-    rec.region = state.region;
-    rec.mayorVote = state.mayorVote;
-    rec.councilVotes = Object.assign({}, state.councilVotes);
-    rec.rating = state.rating;
-    rec.completed = true;
-    rec.completedAt = new Date().toISOString();
-    await saveRecord(rec);
+  if(!isTestProfile()){
+    const rec = await getRecord(state.key);
+    if(rec){
+      rec.region = state.region;
+      rec.mayorVote = state.mayorVote;
+      rec.councilVotes = Object.assign({}, state.councilVotes);
+      rec.rating = state.rating;
+      rec.completed = true;
+      rec.completedAt = new Date().toISOString();
+      await saveRecord(rec);
+    }
   }
 
   btn.disabled = false;
@@ -953,8 +985,24 @@ async function initAdmin(){
   renderTurnoutTab();
 }
 
+const ABANDONED_AFTER_MS = 30 * 60 * 1000; // 30 Minuten
+
+async function cleanupAbandonedRecords(records){
+  const now = Date.now();
+  const stale = records.filter(r=>{
+    if(r.completed) return false;
+    const started = r.startedAt ? new Date(r.startedAt).getTime() : 0;
+    return (now - started) > ABANDONED_AFTER_MS;
+  });
+  if(!stale.length) return records;
+  await Promise.all(stale.map(r => deleteRecord(r.key)));
+  const staleKeys = new Set(stale.map(r => r.key));
+  return records.filter(r => !staleKeys.has(r.key));
+}
+
 async function refreshRecords(){
-  allRecords = await loadAllRecords();
+  const loaded = await loadAllRecords();
+  allRecords = await cleanupAbandonedRecords(loaded);
 }
 
 function setupAdminTabs(){
