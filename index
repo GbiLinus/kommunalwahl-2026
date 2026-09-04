@@ -1,0 +1,1315 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Kommunalwahl 2026 – Musterwahl</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,500;8..60,600;8..60,700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#EFEBE2;
+    --card:#FBF9F3;
+    --ink:#1E2A44;
+    --ink-soft:#5B6478;
+    --line:#C9C2AE;
+    --accent:#A5293B;
+    --accent-dark:#7C1D2C;
+    --gold:#96762F;
+    --focus:#2557A7;
+  }
+
+  *{ box-sizing:border-box; }
+
+  html,body{
+    margin:0;
+    padding:0;
+    min-height:100%;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'IBM Plex Sans', sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  h1,h2{
+    font-family:'Source Serif 4', serif;
+    font-weight:600;
+    margin:0 0 .35em;
+    line-height:1.25;
+  }
+  h1{ font-size:1.5rem; }
+  h2{ font-size:1.3rem; }
+  h3{ font-family:'Source Serif 4', serif; font-size:1.05rem; margin:1.6rem 0 .6rem; }
+
+  p{ line-height:1.55; color:var(--ink-soft); margin:0 0 1rem; }
+
+  button{ font-family:inherit; }
+  button:focus-visible, input:focus-visible, select:focus-visible{
+    outline:2px solid var(--focus);
+    outline-offset:2px;
+  }
+
+  [hidden]{ display:none !important; }
+
+  /* ---------- Public voting flow ---------- */
+  .page{
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    padding: 2.5rem 1.25rem 3rem;
+  }
+
+  .page-head{ text-align:center; max-width:440px; margin-bottom:1.75rem; }
+  .page-head p{ margin:0; font-size:.95rem; }
+
+  .ballot-card{
+    width:100%;
+    max-width:440px;
+    background:var(--card);
+    border:1px solid var(--ink);
+    outline:1px solid var(--ink);
+    outline-offset:6px;
+    padding:2rem 1.6rem;
+    margin: 6px 10px 14px;
+  }
+
+  .progress{ display:flex; gap:6px; margin-bottom:.6rem; }
+  .progress span{ height:4px; flex:1; background:var(--line); }
+  .progress span.done{ background:var(--ink); }
+  .progress span.current{ background:var(--accent); }
+
+  .step-label{ font-size:.8rem; color:var(--ink-soft); margin:0 0 1.4rem; }
+
+  .step{ animation: fade .35s ease; }
+  @keyframes fade{ from{ opacity:0; transform:translateY(4px);} to{opacity:1; transform:translateY(0);} }
+
+  label{ display:block; font-size:.85rem; color:var(--ink-soft); margin-bottom:1.1rem; }
+  label input{
+    display:block;
+    width:100%;
+    margin-top:.35rem;
+    padding:.5rem .1rem;
+    font:inherit;
+    font-size:1rem;
+    color:var(--ink);
+    background:transparent;
+    border:none;
+    border-bottom:1.5px solid var(--line);
+  }
+  label input:focus{ outline:none; border-bottom-color:var(--accent); }
+  .field-error{ color:var(--accent); font-size:.8rem; margin:-0.7rem 0 1.1rem; }
+
+  .btn-primary{
+    display:block;
+    width:100%;
+    margin-top:.5rem;
+    padding:.75rem 1rem;
+    font-size:1rem;
+    font-weight:500;
+    color:#fff;
+    background:var(--ink);
+    border:none;
+    cursor:pointer;
+  }
+  .btn-primary:hover:not(:disabled){ background:var(--accent-dark); }
+  .btn-primary:disabled{ background:var(--line); color:var(--ink-soft); cursor:not-allowed; }
+
+  .region-list, .candidate-list{ display:flex; flex-direction:column; gap:.2rem; margin-bottom:1.4rem; }
+
+  .row-select{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:1rem;
+    padding:.7rem .1rem;
+    border:none;
+    border-bottom:1px solid var(--line);
+    background:none;
+    font-size:1rem;
+    color:var(--ink);
+    cursor:pointer;
+    text-align:left;
+    width:100%;
+  }
+  .row-select .box{
+    width:20px; height:20px;
+    border:1.5px solid var(--ink);
+    flex:0 0 auto;
+    display:flex; align-items:center; justify-content:center;
+    font-size:.9rem;
+    color:var(--accent);
+  }
+  .row-select.selected{ font-weight:500; }
+
+  .council-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:1rem;
+    padding:.6rem .1rem;
+    border-bottom:1px solid var(--line);
+  }
+  .council-row .name{ font-size:1rem; }
+  .council-boxes{ display:flex; gap:4px; }
+  .council-boxes button{
+    width:18px; height:18px;
+    border:1.5px solid var(--ink);
+    background:none;
+    cursor:pointer;
+    padding:0;
+    color:var(--card);
+    font-size:.8rem;
+    line-height:1;
+  }
+  .council-boxes button.filled{ background:var(--ink); }
+  .council-boxes button:disabled{ border-color:var(--line); cursor:not-allowed; }
+
+  .votes-remaining{ font-size:.9rem; margin-bottom:1rem; color:var(--ink); }
+  .votes-remaining strong{ color:var(--accent); }
+
+  .stars{ display:flex; gap:.35rem; margin-bottom:1.4rem; }
+  .stars button{ background:none; border:none; cursor:pointer; font-size:1.8rem; line-height:1; padding:0; color:var(--line); }
+  .stars button.on{ color:var(--gold); }
+
+  #step-thanks{ text-align:center; }
+  .stamp{
+    width:76px; height:76px;
+    border:2.5px solid var(--accent);
+    border-radius:50%;
+    margin:0 auto 1.2rem;
+    display:flex; align-items:center; justify-content:center;
+    color:var(--accent);
+    transform: rotate(-8deg) scale(1.3);
+    opacity:0;
+    animation: stampIn .5s cubic-bezier(.2,.9,.3,1.2) .1s forwards;
+  }
+  .stamp svg{ width:34px; height:34px; }
+  @keyframes stampIn{ to{ opacity:1; transform:rotate(-8deg) scale(1);} }
+
+  @media (prefers-reduced-motion: reduce){
+    .step{ animation:none; }
+    .stamp{ animation:none; opacity:1; transform:rotate(-8deg) scale(1); }
+  }
+
+  @media (max-width:400px){
+    .ballot-card{ padding:1.5rem 1.1rem; }
+  }
+
+  /* ---------- Admin dashboard ---------- */
+  .admin-shell{ display:flex; min-height:100vh; align-items:stretch; }
+  .admin-sidebar{
+    width:210px; flex:0 0 auto;
+    background:var(--card);
+    border-right:1px solid var(--line);
+    padding:1.5rem 0;
+  }
+  .admin-title{
+    font-family:'Source Serif 4', serif;
+    font-size:1.05rem;
+    line-height:1.3;
+    padding:0 1.25rem 1rem;
+    margin:0 0 .5rem;
+    border-bottom:1px solid var(--line);
+  }
+  .admin-tab{
+    display:block; width:100%; text-align:left;
+    padding:.85rem 1.25rem;
+    border:none; border-left:3px solid transparent;
+    background:none;
+    font-size:.95rem;
+    color:var(--ink-soft);
+    cursor:pointer;
+  }
+  .admin-tab.active{ color:var(--ink); font-weight:500; border-left-color:var(--accent); background:var(--paper); }
+  .admin-content{ flex:1 1 auto; padding:2rem 2rem 4rem; max-width:900px; }
+  .admin-content h2{ margin-top:0; }
+
+  @media (max-width:760px){
+    .admin-shell{ flex-direction:column; }
+    .admin-sidebar{ width:100%; display:flex; overflow-x:auto; padding:.5rem; border-right:none; border-bottom:1px solid var(--line); }
+    .admin-title{ display:none; }
+    .admin-tab{ width:auto; white-space:nowrap; border-left:none; border-bottom:3px solid transparent; }
+    .admin-tab.active{ border-left:none; border-bottom-color:var(--accent); }
+    .admin-content{ padding:1.25rem; }
+  }
+
+  .admin-warning{
+    border:1px solid var(--accent);
+    color:var(--accent-dark);
+    padding:.75rem 1rem;
+    margin-bottom:1.5rem;
+    font-size:.9rem;
+  }
+
+  .filter-row{ display:flex; gap:1.25rem; flex-wrap:wrap; align-items:flex-end; margin-bottom:1.6rem; }
+  .filter-row label{ font-size:.85rem; color:var(--ink-soft); margin-bottom:0; }
+  .filter-row select{
+    display:block; margin-top:.3rem;
+    padding:.4rem .5rem;
+    border:1px solid var(--line);
+    background:var(--card);
+    font:inherit; font-size:.95rem;
+    color:var(--ink);
+  }
+  .btn-secondary{
+    padding:.55rem .9rem;
+    border:1px solid var(--ink);
+    background:none;
+    color:var(--ink);
+    cursor:pointer;
+    font-size:.9rem;
+  }
+  .btn-secondary:hover{ background:var(--ink); color:#fff; }
+  .btn-danger{
+    padding:.35rem .7rem;
+    border:1px solid var(--accent);
+    background:none;
+    color:var(--accent);
+    cursor:pointer;
+    font-size:.78rem;
+    flex:0 0 auto;
+  }
+  .btn-danger:hover{ background:var(--accent); color:#fff; }
+
+  #downloadPdfBtn{ max-width:300px; }
+
+  .result-list{ padding-left:1.4rem; margin:0 0 .5rem; }
+  .result-list li{ display:flex; justify-content:space-between; gap:1rem; padding:.35rem 0; border-bottom:1px solid var(--line); }
+  .result-list .count{ font-weight:600; }
+
+  .jg-group{ margin-bottom:1.4rem; }
+  .jg-group > h4{ font-family:'Source Serif 4', serif; font-size:1rem; margin:0 0 .6rem; }
+  .klasse-group{ margin-bottom:.9rem; }
+  .klasse-group h5{ font-size:.85rem; color:var(--ink-soft); margin:0 0 .35rem; font-weight:500; }
+  .student-row{
+    display:flex; justify-content:space-between; align-items:center;
+    gap:.75rem; padding:.4rem 0;
+    border-bottom:1px solid var(--line);
+    font-size:.9rem;
+  }
+  .status-badge{ font-size:.75rem; padding:.15rem .5rem; border:1px solid var(--line); white-space:nowrap; }
+  .status-badge.done{ border-color:var(--ink); color:var(--ink); }
+  .status-badge.pending{ border-color:var(--line); color:var(--ink-soft); }
+
+  .chart-block{ margin-bottom:2.2rem; }
+  .chart-row{ display:flex; gap:2rem; flex-wrap:wrap; align-items:center; }
+  .chart-pie{ width:170px; height:170px; flex:0 0 auto; }
+  .chart-legend{ list-style:none; padding:0; margin:0; font-size:.85rem; }
+  .chart-legend li{ display:flex; align-items:center; gap:.45rem; margin-bottom:.35rem; }
+  .chart-legend .swatch{ width:10px; height:10px; display:inline-block; flex:0 0 auto; }
+  .chart-bar{ width:100%; max-width:420px; height:auto; display:block; }
+  .chart-bar text{ font-size:9px; fill:var(--ink); font-family:'IBM Plex Sans',sans-serif; }
+  .bar-label{ text-anchor:end; }
+  .chart-empty{ font-style:italic; }
+
+  .modal-overlay{
+    position:fixed; inset:0;
+    background:rgba(30,42,68,.55);
+    display:flex; align-items:center; justify-content:center;
+    padding:1rem; z-index:50;
+  }
+  .modal-box{ background:var(--card); border:1px solid var(--ink); max-width:380px; padding:1.5rem; }
+  .modal-box h3{ margin-top:0; }
+  .modal-actions{ display:flex; gap:.75rem; margin-top:1.25rem; }
+  .modal-actions button{ flex:1; margin-top:0; }
+
+  @media print{
+    body > *:not(#printArea){ display:none !important; }
+    #printArea{ display:block !important; padding:2rem; }
+  }
+</style>
+</head>
+<body>
+
+<div class="page" id="publicView">
+  <div class="page-head">
+    <h1>Kommunalwahl 2026</h1>
+    <p>Musterwahl für Bad Rothenfelde, Dissen, Hilter, Bad Iburg, Bad Laer und Glandorf.</p>
+  </div>
+
+  <main class="ballot-card" id="card">
+    <div class="progress" id="progress" aria-hidden="true"></div>
+    <p class="step-label"><span id="stepNum">1</span> von 6</p>
+
+    <section id="step-intro" class="step">
+      <h2>Bevor es losgeht</h2>
+      <p>Trag deine Daten ein, um an der Musterwahl teilzunehmen.</p>
+      <form id="formIntro">
+        <label>Vorname
+          <input type="text" id="vorname" autocomplete="given-name" required>
+        </label>
+        <label>Nachname
+          <input type="text" id="nachname" autocomplete="family-name" required>
+        </label>
+        <label>Klasse
+          <input type="text" id="klasse" placeholder="z. B. 9b oder 12" pattern="^(?:8|9|10|11)[A-Za-z]$|^(?:12|13)$" required>
+        </label>
+        <p id="klasseError" class="field-error" hidden>Bitte im Format 9b eingeben (Klasse 8–11 mit Buchstabe) oder 12 (Klasse 12–13 ohne Buchstabe).</p>
+        <label>Geburtsdatum
+          <input type="date" id="geburtsdatum" required>
+        </label>
+        <!-- Hinweis: Hier kann später bei Bedarf ein Passwort-Feld ergänzt werden -->
+        <button type="submit" class="btn-primary">Weiter</button>
+      </form>
+    </section>
+
+    <section id="step-region" class="step" hidden>
+      <h2>Wähle deine Region</h2>
+      <p>Für diese Gemeinde stimmst du im Folgenden ab.</p>
+      <div class="region-list" id="regionList"></div>
+      <button class="btn-primary" id="btnRegionNext" disabled>Weiter</button>
+    </section>
+
+    <section id="step-mayor" class="step" hidden>
+      <h2>Bürgermeister/in</h2>
+      <p><span id="mayorRegionName"></span> · du hast 1 Stimme.</p>
+      <div class="candidate-list" id="mayorList"></div>
+      <button class="btn-primary" id="btnMayorNext" disabled>Weiter</button>
+    </section>
+
+    <section id="step-council" class="step" hidden>
+      <h2>Gemeinderat</h2>
+      <p><span id="councilRegionName"></span> · du hast 3 Stimmen und kannst einer Person bis zu 3 davon geben.</p>
+      <p class="votes-remaining">Noch <strong id="remainingVotes">3</strong> von 3 Stimmen übrig</p>
+      <div class="candidate-list" id="councilList"></div>
+      <button class="btn-primary" id="btnCouncilNext">Weiter</button>
+    </section>
+
+    <section id="step-rating" class="step" hidden>
+      <h2>Wie war's?</h2>
+      <p>Bewerte diese Website mit 1 bis 5 Sternen.</p>
+      <div class="stars" id="starRow"></div>
+      <button class="btn-primary" id="btnRatingNext" disabled>Weiter</button>
+    </section>
+
+    <section id="step-thanks" class="step" hidden>
+      <div class="stamp" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M4 12.5L9.5 18L20 6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <h2>Danke fürs Wählen!</h2>
+      <p>Deine Stimme wurde gezählt. Du kannst dieses Fenster jetzt schließen.</p>
+    </section>
+
+    <section id="step-blocked" class="step" hidden>
+      <h2>Du hast bereits abgestimmt</h2>
+      <p>Für diese Angaben liegt bereits eine abgeschlossene Stimmabgabe vor. Jede Person kann nur einmal abstimmen.</p>
+    </section>
+  </main>
+</div>
+
+<div id="adminView" hidden>
+  <div class="admin-shell">
+    <nav class="admin-sidebar">
+      <p class="admin-title">Kommunalwahl 2026<br>Verwaltung</p>
+      <button class="admin-tab" data-tab="stats" type="button">Statistiken</button>
+      <button class="admin-tab" data-tab="elections" type="button">Wahlen selbst</button>
+      <button class="admin-tab" data-tab="final" type="button">Finale Auswertung</button>
+      <button class="admin-tab" data-tab="turnout" type="button">Jahrgänge im Detail</button>
+      <button class="admin-tab" id="btnBackToPublic" type="button" style="margin-top:1.5rem; border-top:1px solid var(--line);">Zurück zur Wahlseite</button>
+    </nav>
+
+    <div class="admin-content">
+      <p id="adminStorageWarning" class="admin-warning" hidden>Firebase konnte nicht geladen werden. Bitte Internetverbindung prüfen und die Seite neu laden.</p>
+
+      <section id="tab-stats" class="admin-panel">
+        <h2>Statistiken</h2>
+        <div class="filter-row">
+          <label>Region <select id="statsRegion"></select></label>
+          <label>Jahrgänge
+            <select id="statsBand">
+              <option value="all">Alle Jahrgänge</option>
+              <option value="8-10">Klasse 8–10</option>
+              <option value="11-13">Klasse 11–13</option>
+            </select>
+          </label>
+          <button class="btn-secondary" id="statsRefresh" type="button">Aktualisieren</button>
+        </div>
+        <div id="statsOutput"></div>
+      </section>
+
+      <section id="tab-elections" class="admin-panel" hidden>
+        <h2>Wahlen selbst</h2>
+        <div class="filter-row">
+          <label>Region <select id="electionsRegion"></select></label>
+          <button class="btn-secondary" id="electionsRefresh" type="button">Aktualisieren</button>
+        </div>
+        <div id="electionsOutput"></div>
+      </section>
+
+      <section id="tab-final" class="admin-panel" hidden>
+        <h2>Finale Auswertung</h2>
+        <div id="finalOutput"></div>
+        <button class="btn-primary" id="downloadPdfBtn" type="button">Ergebnis als PDF herunterladen</button>
+      </section>
+
+      <section id="tab-turnout" class="admin-panel" hidden>
+        <h2>Jahrgänge im Detail</h2>
+        <div class="filter-row">
+          <label>Jahrgang <select id="turnoutJahrgang"></select></label>
+          <button class="btn-secondary" id="turnoutRefresh" type="button">Aktualisieren</button>
+        </div>
+        <div id="turnoutOutput"></div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<div id="confirmModal" class="modal-overlay" hidden>
+  <div class="modal-box">
+    <h3>Stimme wirklich entfernen?</h3>
+    <p id="confirmModalText"></p>
+    <div class="modal-actions">
+      <button class="btn-secondary" id="confirmCancel" type="button">Abbrechen</button>
+      <button class="btn-primary" id="confirmOk" type="button" style="background:var(--accent);">Endgültig entfernen</button>
+    </div>
+  </div>
+</div>
+
+<div id="printArea" hidden></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.17.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore-compat.js"></script>
+<script>
+// ---------------------------------------------------------------
+// Platzhalter-Kandidat:innen. Bitte vor dem echten Einsatz durch
+// die tatsächlichen Kandidat:innen der jeweiligen Region ersetzen.
+// ---------------------------------------------------------------
+const REGIONS = ["Bad Rothenfelde","Dissen","Hilter","Bad Iburg","Bad Laer","Glandorf"];
+
+function makeCandidates(){
+  return {
+    mayor: ["Kandidat/in A","Kandidat/in B","Kandidat/in C"],
+    council: ["Person 1","Person 2","Person 3","Person 4","Person 5","Person 6"]
+  };
+}
+
+const CANDIDATES = {};
+REGIONS.forEach(r => CANDIDATES[r] = makeCandidates());
+
+const STEPS = ["step-intro","step-region","step-mayor","step-council","step-rating","step-thanks"];
+
+const state = {
+  vorname:"", nachname:"", klasse:"", geburtsdatum:"",
+  // passwort: "", // Platz für ein später geplantes Passwort-Feld
+  key:"", jahrgang:null,
+  region:null,
+  mayorVote:null,
+  councilVotes:{},
+  rating:0
+};
+
+let stepIndex = 0;
+
+// ---------------------------------------------------------------
+// Firebase / Firestore – ersetzt den früheren Claude-Artefaktspeicher.
+// Läuft dadurch jetzt auch auf jedem selbst gehosteten Webspace.
+// ---------------------------------------------------------------
+const firebaseConfig = {
+  apiKey: "AIzaSyAlboInUNQ4tmWduRiqQ5iMLYtrTgDcgp0",
+  authDomain: "komunalwahlen2026.firebaseapp.com",
+  projectId: "komunalwahlen2026",
+  storageBucket: "komunalwahlen2026.firebasestorage.app",
+  messagingSenderId: "466097175609",
+  appId: "1:466097175609:web:361a642944d149f1afa1e8"
+};
+
+let FIREBASE_READY = false;
+let db = null;
+try{
+  firebase.initializeApp(firebaseConfig);
+  db = firebase.firestore();
+  // Hilft auf Schul-/Firmennetzwerken mit strengen Proxys, bei denen
+  // Firestore sonst gelegentlich hängen bleibt.
+  db.settings({ experimentalAutoDetectLongPolling: true, merge: true });
+  FIREBASE_READY = true;
+}catch(e){
+  console.error("Firebase-Initialisierung fehlgeschlagen", e);
+}
+
+const VOTES_COLLECTION = "votes";
+
+// Läuft eine Firestore-Anfrage länger als das Zeitlimit, wird trotzdem
+// weitergemacht statt dass die Seite hängen bleibt.
+function withTimeout(promise, ms){
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(()=>reject(new Error("Zeitüberschreitung")), ms))
+  ]);
+}
+
+// Test-Profil: kann beliebig oft abstimmen und wird nie gespeichert,
+// taucht also nirgendwo im Ergebnis auf.
+const TEST_KEY = "p|1|1|2026-01-01";
+function isTestProfile(){
+  return state.key === TEST_KEY;
+}
+
+function studentKey(v,n,k,g){
+  return [v,n,k,g].map(s => String(s||"").trim().toLowerCase()).join("|");
+}
+
+function docIdFromKey(key){
+  return String(key||"").replace(/[^a-z0-9_-]/g, "_").slice(0, 300) || "unbekannt";
+}
+
+function parseJahrgang(klasse){
+  const m = String(klasse||"").match(/\d+/);
+  if(!m) return null;
+  const num = parseInt(m[0],10);
+  return (num>=5 && num<=13) ? num : null;
+}
+
+// Klasse 8-11: Zahl + genau ein Buchstabe (z. B. "9b").
+// Klasse 12-13: nur die Zahl, kein Buchstabe (z. B. "12").
+const KLASSE_PATTERN = /^(?:8|9|10|11)[A-Za-z]$|^(?:12|13)$/;
+
+async function getRecord(key){
+  if(!FIREBASE_READY) return null;
+  try{
+    const snap = await withTimeout(db.collection(VOTES_COLLECTION).doc(docIdFromKey(key)).get(), 8000);
+    return snap.exists ? snap.data() : null;
+  }catch(e){
+    console.error("Laden fehlgeschlagen", e);
+    return null;
+  }
+}
+
+async function saveRecord(record){
+  if(!FIREBASE_READY) return false;
+  try{
+    await withTimeout(db.collection(VOTES_COLLECTION).doc(docIdFromKey(record.key)).set(record), 8000);
+    return true;
+  }catch(e){
+    console.error("Speichern fehlgeschlagen", e);
+    return false;
+  }
+}
+
+async function deleteRecord(key){
+  if(!FIREBASE_READY) return false;
+  try{
+    await withTimeout(db.collection(VOTES_COLLECTION).doc(docIdFromKey(key)).delete(), 8000);
+    return true;
+  }catch(e){
+    console.error("Löschen fehlgeschlagen", e);
+    return false;
+  }
+}
+
+async function loadAllRecords(){
+  if(!FIREBASE_READY) return [];
+  try{
+    const snap = await withTimeout(db.collection(VOTES_COLLECTION).get(), 8000);
+    return snap.docs.map(d => d.data());
+  }catch(e){
+    console.error("Laden fehlgeschlagen", e);
+    return [];
+  }
+}
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+
+function renderProgress(){
+  const wrap = document.getElementById("progress");
+  wrap.innerHTML = "";
+  STEPS.forEach((_, i)=>{
+    const dot = document.createElement("span");
+    if(i < stepIndex) dot.className = "done";
+    else if(i === stepIndex) dot.className = "current";
+    wrap.appendChild(dot);
+  });
+  document.getElementById("stepNum").textContent = stepIndex+1;
+}
+
+function goToStep(i){
+  document.getElementById(STEPS[stepIndex]).hidden = true;
+  stepIndex = i;
+  const target = document.getElementById(STEPS[stepIndex]);
+  target.hidden = false;
+  target.classList.remove("step");
+  void target.offsetWidth;
+  target.classList.add("step");
+  renderProgress();
+  window.scrollTo(0,0);
+}
+
+function showBlocked(){
+  document.getElementById(STEPS[stepIndex]).hidden = true;
+  document.getElementById("step-blocked").hidden = false;
+  document.getElementById("progress").hidden = true;
+  document.querySelector(".step-label").hidden = true;
+}
+
+// --- Step 1: Anmeldedaten ---
+document.getElementById("klasse").addEventListener("input", ()=>{
+  document.getElementById("klasseError").hidden = true;
+});
+
+document.getElementById("formIntro").addEventListener("submit", async e=>{
+  e.preventDefault();
+  const submitBtn = e.target.querySelector("button[type=submit]");
+  submitBtn.disabled = true;
+  submitBtn.textContent = "Wird geprüft…";
+
+  state.vorname = document.getElementById("vorname").value.trim();
+  state.nachname = document.getElementById("nachname").value.trim();
+  state.klasse = document.getElementById("klasse").value.trim();
+  state.geburtsdatum = document.getElementById("geburtsdatum").value;
+  state.key = studentKey(state.vorname, state.nachname, state.klasse, state.geburtsdatum);
+  state.jahrgang = parseJahrgang(state.klasse);
+
+  if(!isTestProfile()){
+    if(!KLASSE_PATTERN.test(state.klasse)){
+      document.getElementById("klasseError").hidden = false;
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Weiter";
+      return;
+    }
+    document.getElementById("klasseError").hidden = true;
+
+    const existing = await getRecord(state.key);
+
+    if(existing && existing.completed){
+      showBlocked();
+      return;
+    }
+
+    if(!existing){
+      await saveRecord({
+        key: state.key,
+        vorname: state.vorname,
+        nachname: state.nachname,
+        klasse: state.klasse,
+        jahrgang: state.jahrgang,
+        region: null,
+        mayorVote: null,
+        councilVotes: {},
+        rating: null,
+        completed: false,
+        startedAt: new Date().toISOString()
+      });
+    }
+  }
+
+  submitBtn.disabled = false;
+  submitBtn.textContent = "Weiter";
+  renderRegions();
+  goToStep(1);
+});
+
+// --- Step 2: Region ---
+function renderRegions(){
+  const list = document.getElementById("regionList");
+  list.innerHTML = "";
+  REGIONS.forEach(region=>{
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "row-select";
+    btn.innerHTML = `<span>${region}</span><span class="box"></span>`;
+    btn.addEventListener("click", ()=>{
+      state.region = region;
+      [...list.children].forEach(c=>{
+        c.classList.remove("selected");
+        c.querySelector(".box").textContent = "";
+      });
+      btn.classList.add("selected");
+      btn.querySelector(".box").textContent = "✕";
+      document.getElementById("btnRegionNext").disabled = false;
+    });
+    list.appendChild(btn);
+  });
+}
+
+document.getElementById("btnRegionNext").addEventListener("click", async ()=>{
+  const btn = document.getElementById("btnRegionNext");
+  btn.disabled = true;
+  const originalLabel = btn.textContent;
+  btn.textContent = "Wird geladen…";
+
+  document.getElementById("mayorRegionName").textContent = state.region;
+  document.getElementById("councilRegionName").textContent = state.region;
+  renderMayor();
+  renderCouncil();
+
+  if(!isTestProfile()){
+    const rec = await getRecord(state.key);
+    if(rec){ rec.region = state.region; await saveRecord(rec); }
+  }
+
+  btn.disabled = false;
+  btn.textContent = originalLabel;
+  goToStep(2);
+});
+
+// --- Step 3: Bürgermeister/in ---
+function renderMayor(){
+  const list = document.getElementById("mayorList");
+  list.innerHTML = "";
+  state.mayorVote = null;
+  document.getElementById("btnMayorNext").disabled = true;
+  CANDIDATES[state.region].mayor.forEach(name=>{
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "row-select";
+    btn.innerHTML = `<span>${name}</span><span class="box"></span>`;
+    btn.addEventListener("click", ()=>{
+      state.mayorVote = name;
+      [...list.children].forEach(c=>{
+        c.classList.remove("selected");
+        c.querySelector(".box").textContent = "";
+      });
+      btn.classList.add("selected");
+      btn.querySelector(".box").textContent = "✕";
+      document.getElementById("btnMayorNext").disabled = false;
+    });
+    list.appendChild(btn);
+  });
+}
+
+document.getElementById("btnMayorNext").addEventListener("click", ()=> goToStep(3));
+
+// --- Step 4: Gemeinderat (3 Stimmen, bis zu 3 pro Person) ---
+function remainingCouncilVotes(){
+  const used = Object.values(state.councilVotes).reduce((a,b)=>a+b,0);
+  return 3 - used;
+}
+
+function renderCouncil(){
+  state.councilVotes = {};
+  const list = document.getElementById("councilList");
+  list.innerHTML = "";
+  CANDIDATES[state.region].council.forEach(name=>{
+    state.councilVotes[name] = 0;
+    const row = document.createElement("div");
+    row.className = "council-row";
+    row.innerHTML = `<span class="name">${name}</span>`;
+    const boxesWrap = document.createElement("div");
+    boxesWrap.className = "council-boxes";
+    for(let i=1;i<=3;i++){
+      const b = document.createElement("button");
+      b.type = "button";
+      b.dataset.level = i;
+      b.setAttribute("aria-label", `${i}. Stimme für ${name}`);
+      b.addEventListener("click", ()=> setCouncilVote(name, i));
+      boxesWrap.appendChild(b);
+    }
+    row.appendChild(boxesWrap);
+    list.appendChild(row);
+  });
+  updateCouncilUI();
+}
+
+function setCouncilVote(name, level){
+  const current = state.councilVotes[name];
+  if(level === current){
+    state.councilVotes[name] = level-1;
+  } else if(level > current){
+    const diff = level - current;
+    if(diff <= remainingCouncilVotes()) state.councilVotes[name] = level;
+  } else {
+    state.councilVotes[name] = level;
+  }
+  updateCouncilUI();
+}
+
+function updateCouncilUI(){
+  const remaining = remainingCouncilVotes();
+  document.getElementById("remainingVotes").textContent = remaining;
+  document.querySelectorAll(".council-row").forEach(row=>{
+    const name = row.querySelector(".name").textContent;
+    const count = state.councilVotes[name];
+    row.querySelectorAll(".council-boxes button").forEach(btn=>{
+      const level = Number(btn.dataset.level);
+      const filled = level <= count;
+      btn.classList.toggle("filled", filled);
+      btn.textContent = filled ? "✕" : "";
+      btn.disabled = !filled && (level-count) > remaining;
+    });
+  });
+}
+
+document.getElementById("btnCouncilNext").addEventListener("click", ()=> goToStep(4));
+
+// --- Step 5: Bewertung ---
+function renderStars(){
+  const row = document.getElementById("starRow");
+  row.innerHTML = "";
+  state.rating = 0;
+  document.getElementById("btnRatingNext").disabled = true;
+  for(let i=1;i<=5;i++){
+    const b = document.createElement("button");
+    b.type = "button";
+    b.textContent = "★";
+    b.setAttribute("aria-label", i + " von 5 Sternen");
+    b.addEventListener("click", ()=>{
+      state.rating = i;
+      [...row.children].forEach((s,idx)=> s.classList.toggle("on", idx < i));
+      document.getElementById("btnRatingNext").disabled = false;
+    });
+    row.appendChild(b);
+  }
+}
+renderStars();
+
+document.getElementById("btnRatingNext").addEventListener("click", async ()=>{
+  const btn = document.getElementById("btnRatingNext");
+  btn.disabled = true;
+  btn.textContent = "Wird gespeichert…";
+
+  if(!isTestProfile()){
+    const rec = await getRecord(state.key);
+    if(rec){
+      rec.region = state.region;
+      rec.mayorVote = state.mayorVote;
+      rec.councilVotes = Object.assign({}, state.councilVotes);
+      rec.rating = state.rating;
+      rec.completed = true;
+      rec.completedAt = new Date().toISOString();
+      await saveRecord(rec);
+    }
+  }
+
+  btn.disabled = false;
+  btn.textContent = "Weiter";
+  goToStep(5);
+});
+
+renderProgress();
+
+// =================================================================
+// Verwaltung (nur über #verwaltung erreichbar)
+// =================================================================
+let allRecords = [];
+let pendingDelete = null;
+
+const CHART_COLORS = ["#1E2A44","#A5293B","#96762F","#3C6E71","#7C6B8F","#4C7031","#8A8F98"];
+
+function pieChart(data){
+  const total = data.reduce((s,d)=>s+d.value,0);
+  if(total <= 0) return `<p class="chart-empty">Noch keine Stimmen.</p>`;
+  let angle = -90;
+  const cx=85, cy=85, r=80;
+  let paths = "";
+  data.forEach((d,i)=>{
+    const sweep = (d.value/total)*360;
+    const end = angle + sweep;
+    const large = sweep > 180 ? 1 : 0;
+    if(sweep > 0.001){
+      const x1 = cx + r*Math.cos(angle*Math.PI/180);
+      const y1 = cy + r*Math.sin(angle*Math.PI/180);
+      const x2 = cx + r*Math.cos(end*Math.PI/180);
+      const y2 = cy + r*Math.sin(end*Math.PI/180);
+      paths += `<path d="M ${cx} ${cy} L ${x1.toFixed(2)} ${y1.toFixed(2)} A ${r} ${r} 0 ${large} 1 ${x2.toFixed(2)} ${y2.toFixed(2)} Z" fill="${CHART_COLORS[i%CHART_COLORS.length]}"></path>`;
+    }
+    angle = end;
+  });
+  const legend = data.map((d,i)=>`<li><span class="swatch" style="background:${CHART_COLORS[i%CHART_COLORS.length]}"></span>${escapeHtml(d.label)} — ${d.value} (${Math.round(d.value/total*100)}%)</li>`).join("");
+  return `<div class="chart-row"><svg viewBox="0 0 170 170" class="chart-pie">${paths}</svg><ul class="chart-legend">${legend}</ul></div>`;
+}
+
+function barChart(data){
+  if(!data.length) return `<p class="chart-empty">Keine Daten.</p>`;
+  const max = Math.max(1, ...data.map(d=>d.value));
+  const barH=20, gap=12, leftPad=130, chartW=220;
+  const height = data.length*(barH+gap);
+  let rows = "";
+  data.forEach((d,i)=>{
+    const y = i*(barH+gap);
+    const w = (d.value/max)*chartW;
+    rows += `<text x="${leftPad-8}" y="${y+barH*0.7}" class="bar-label">${escapeHtml(d.label)}</text>`;
+    rows += `<rect x="${leftPad}" y="${y}" width="${w.toFixed(1)}" height="${barH}" fill="${CHART_COLORS[i%CHART_COLORS.length]}"></rect>`;
+    rows += `<text x="${leftPad+w+6}" y="${y+barH*0.7}" class="bar-value">${d.value}</text>`;
+  });
+  return `<svg viewBox="0 0 ${leftPad+chartW+40} ${height}" class="chart-bar">${rows}</svg>`;
+}
+
+function statusBadge(rec){
+  return rec.completed
+    ? `<span class="status-badge done">Abgestimmt</span>`
+    : `<span class="status-badge pending">Nicht abgeschlossen</span>`;
+}
+
+function bandMatches(jahrgang, band){
+  if(band === "all") return true;
+  if(jahrgang == null) return false;
+  if(band === "8-10") return jahrgang >= 8 && jahrgang <= 10;
+  if(band === "11-13") return jahrgang >= 11 && jahrgang <= 13;
+  return true;
+}
+
+function regionOptionsHTML(includeAll){
+  let html = "";
+  if(includeAll) html += `<option value="all">Alle Regionen</option>`;
+  REGIONS.forEach(r => html += `<option value="${r}">${r}</option>`);
+  return html;
+}
+
+function showAdminView(){
+  document.getElementById("publicView").hidden = true;
+  document.getElementById("adminView").hidden = false;
+  initAdmin();
+}
+
+function showPublicView(){
+  document.getElementById("adminView").hidden = true;
+  document.getElementById("publicView").hidden = false;
+}
+
+// Fallback für den Fall, dass die Datei direkt geöffnet oder selbst
+// gehostet wird (dort funktioniert ein #verwaltung-Link im echten Sinne).
+function route(){
+  if(location.hash === "#verwaltung") showAdminView();
+}
+window.addEventListener("hashchange", route);
+
+// Primärer Zugang: In Claudes veröffentlichten Artefakten läuft die Seite
+// in einem iframe, wodurch ein #-Zusatz in der Adresszeile die Seite nicht
+// erreicht. Stattdessen: irgendwo außerhalb eines Eingabefelds klicken und
+// "verwaltung" eintippen.
+let adminKeyBuffer = "";
+const ADMIN_PHRASE = "verwaltung";
+document.addEventListener("keydown", e=>{
+  const tag = (document.activeElement && document.activeElement.tagName) || "";
+  if(["INPUT","TEXTAREA","SELECT"].includes(tag)) return;
+  if(e.key.length === 1){
+    adminKeyBuffer = (adminKeyBuffer + e.key.toLowerCase()).slice(-ADMIN_PHRASE.length);
+    if(adminKeyBuffer === ADMIN_PHRASE){
+      adminKeyBuffer = "";
+      showAdminView();
+    }
+  }
+});
+
+async function initAdmin(){
+  document.getElementById("adminStorageWarning").hidden = FIREBASE_READY;
+
+  document.getElementById("statsRegion").innerHTML = regionOptionsHTML(true);
+  document.getElementById("electionsRegion").innerHTML = regionOptionsHTML(false);
+  document.getElementById("turnoutJahrgang").innerHTML =
+    `<option value="all">Alle Jahrgänge</option>` +
+    [8,9,10,11,12,13].map(j=>`<option value="${j}">Jahrgang ${j}</option>`).join("");
+
+  setupAdminTabs();
+  setupAdminFilters();
+  await refreshRecords();
+  renderStatsTab();
+  renderElectionsTab();
+  renderFinalTab();
+  renderTurnoutTab();
+}
+
+const ABANDONED_AFTER_MS = 30 * 60 * 1000; // 30 Minuten
+
+async function cleanupAbandonedRecords(records){
+  const now = Date.now();
+  const stale = records.filter(r=>{
+    if(r.completed) return false;
+    const started = r.startedAt ? new Date(r.startedAt).getTime() : 0;
+    return (now - started) > ABANDONED_AFTER_MS;
+  });
+  if(!stale.length) return records;
+  await Promise.all(stale.map(r => deleteRecord(r.key)));
+  const staleKeys = new Set(stale.map(r => r.key));
+  return records.filter(r => !staleKeys.has(r.key));
+}
+
+async function refreshRecords(){
+  const loaded = await loadAllRecords();
+  allRecords = await cleanupAbandonedRecords(loaded);
+}
+
+function setupAdminTabs(){
+  document.querySelectorAll(".admin-tab[data-tab]").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      document.querySelectorAll(".admin-tab[data-tab]").forEach(b=>b.classList.remove("active"));
+      btn.classList.add("active");
+      document.querySelectorAll(".admin-panel").forEach(p=>p.hidden = true);
+      document.getElementById("tab-"+btn.dataset.tab).hidden = false;
+    });
+  });
+  document.querySelector('.admin-tab[data-tab="stats"]').classList.add("active");
+}
+
+function setupAdminFilters(){
+  document.getElementById("statsRegion").addEventListener("change", renderStatsTab);
+  document.getElementById("statsBand").addEventListener("change", renderStatsTab);
+  document.getElementById("statsRefresh").addEventListener("click", async ()=>{ await refreshRecords(); renderStatsTab(); });
+
+  document.getElementById("electionsRegion").addEventListener("change", renderElectionsTab);
+  document.getElementById("electionsRefresh").addEventListener("click", async ()=>{ await refreshRecords(); renderElectionsTab(); });
+
+  document.getElementById("turnoutJahrgang").addEventListener("change", renderTurnoutTab);
+  document.getElementById("turnoutRefresh").addEventListener("click", async ()=>{ await refreshRecords(); renderTurnoutTab(); });
+
+  document.getElementById("btnBackToPublic").addEventListener("click", showPublicView);
+  document.getElementById("downloadPdfBtn").addEventListener("click", downloadFinalPdf);
+  document.getElementById("confirmCancel").addEventListener("click", closeModal);
+  document.getElementById("confirmOk").addEventListener("click", confirmDelete);
+  document.addEventListener("keydown", e=>{
+    if(e.key === "Escape" && !document.getElementById("confirmModal").hidden) closeModal();
+  });
+}
+
+// --- Tab: Statistiken ---
+function renderStatsTab(){
+  const region = document.getElementById("statsRegion").value || "all";
+  const band = document.getElementById("statsBand").value || "all";
+  const out = document.getElementById("statsOutput");
+  const completed = allRecords.filter(r => r.completed && bandMatches(r.jahrgang, band));
+
+  if(region === "all"){
+    const byRegion = {};
+    REGIONS.forEach(r => byRegion[r]=0);
+    completed.forEach(r => { if(r.region) byRegion[r.region] = (byRegion[r.region]||0)+1; });
+    const regionData = REGIONS.map(r => ({label:r, value: byRegion[r]||0}));
+
+    const byJahrgang = {};
+    [8,9,10,11,12,13].forEach(j => byJahrgang[j]=0);
+    completed.forEach(r => { if(r.jahrgang) byJahrgang[r.jahrgang] = (byJahrgang[r.jahrgang]||0)+1; });
+    const jahrgangData = [8,9,10,11,12,13].map(j => ({label:"Jahrgang "+j, value: byJahrgang[j]||0}));
+
+    out.innerHTML = `
+      <p>${completed.length} abgeschlossene Stimmen im gewählten Filter.</p>
+      <div class="chart-block"><h3>Teilnahme nach Region</h3>${pieChart(regionData)}</div>
+      <div class="chart-block"><h3>Teilnahme nach Jahrgang</h3>${barChart(jahrgangData)}</div>
+    `;
+    return;
+  }
+
+  const regionRecords = completed.filter(r => r.region === region);
+  const mayorCounts = {};
+  (CANDIDATES[region] ? CANDIDATES[region].mayor : []).forEach(c => mayorCounts[c]=0);
+  regionRecords.forEach(r => { if(r.mayorVote) mayorCounts[r.mayorVote] = (mayorCounts[r.mayorVote]||0)+1; });
+  const mayorData = Object.keys(mayorCounts).map(c => ({label:c, value: mayorCounts[c]}));
+
+  const councilCounts = {};
+  (CANDIDATES[region] ? CANDIDATES[region].council : []).forEach(c => councilCounts[c]=0);
+  regionRecords.forEach(r => {
+    Object.entries(r.councilVotes||{}).forEach(([name,v]) => { councilCounts[name] = (councilCounts[name]||0)+v; });
+  });
+  const councilData = Object.keys(councilCounts).map(c => ({label:c, value: councilCounts[c]})).sort((a,b)=>b.value-a.value);
+
+  out.innerHTML = `
+    <p>${regionRecords.length} abgeschlossene Stimmen in ${escapeHtml(region)} im gewählten Filter.</p>
+    <div class="chart-block"><h3>Bürgermeister/in-Ergebnis</h3>${pieChart(mayorData)}</div>
+    <div class="chart-block"><h3>Gemeinderat-Ergebnis</h3>${barChart(councilData)}</div>
+  `;
+}
+
+// --- Tab: Wahlen selbst ---
+function renderElectionsTab(){
+  const region = document.getElementById("electionsRegion").value || REGIONS[0];
+  const out = document.getElementById("electionsOutput");
+  const regionRecords = allRecords.filter(r => r.region === region);
+  const completedRecords = regionRecords.filter(r => r.completed);
+
+  const mayorCounts = {};
+  (CANDIDATES[region] ? CANDIDATES[region].mayor : []).forEach(c => mayorCounts[c]=0);
+  completedRecords.forEach(r => { if(r.mayorVote) mayorCounts[r.mayorVote] = (mayorCounts[r.mayorVote]||0)+1; });
+  const mayorList = Object.entries(mayorCounts).sort((a,b)=>b[1]-a[1])
+    .map(([name,count]) => `<li>${escapeHtml(name)} <span class="count">${count}</span></li>`).join("");
+
+  const councilCounts = {};
+  (CANDIDATES[region] ? CANDIDATES[region].council : []).forEach(c => councilCounts[c]=0);
+  completedRecords.forEach(r => { Object.entries(r.councilVotes||{}).forEach(([n,v]) => { councilCounts[n]=(councilCounts[n]||0)+v; }); });
+  const councilList = Object.entries(councilCounts).sort((a,b)=>b[1]-a[1])
+    .map(([name,count]) => `<li>${escapeHtml(name)} <span class="count">${count}</span></li>`).join("");
+
+  const groups = {};
+  regionRecords.forEach(r => {
+    const jg = r.jahrgang || "unbekannt";
+    groups[jg] = groups[jg] || {};
+    groups[jg][r.klasse] = groups[jg][r.klasse] || [];
+    groups[jg][r.klasse].push(r);
+  });
+  const jgKeys = Object.keys(groups).sort((a,b) => (a==="unbekannt"?999:Number(a)) - (b==="unbekannt"?999:Number(b)));
+
+  let participantsHtml = "";
+  jgKeys.forEach(jg => {
+    participantsHtml += `<div class="jg-group"><h4>${jg==="unbekannt" ? "Unbekannter Jahrgang" : "Jahrgang "+jg}</h4>`;
+    Object.keys(groups[jg]).sort().forEach(klasse => {
+      participantsHtml += `<div class="klasse-group"><h5>Klasse ${escapeHtml(klasse)}</h5>`;
+      groups[jg][klasse].forEach(r => {
+        participantsHtml += `<div class="student-row">
+          <span>${escapeHtml(r.vorname)} ${escapeHtml(r.nachname)} ${statusBadge(r)}</span>
+          <button class="btn-danger" data-key="${escapeHtml(r.key)}" data-name="${escapeHtml(r.vorname+" "+r.nachname)}" type="button">Entfernen</button>
+        </div>`;
+      });
+      participantsHtml += `</div>`;
+    });
+    participantsHtml += `</div>`;
+  });
+  if(!jgKeys.length) participantsHtml = `<p>Noch keine Anmeldungen für diese Region.</p>`;
+
+  out.innerHTML = `
+    <h3>Ergebnis Bürgermeister/in</h3>
+    <ol class="result-list">${mayorList || "<li>Noch keine Stimmen.</li>"}</ol>
+    <h3>Ergebnis Gemeinderat</h3>
+    <ol class="result-list">${councilList || "<li>Noch keine Stimmen.</li>"}</ol>
+    <h3>Teilnehmer/innen (${regionRecords.length})</h3>
+    ${participantsHtml}
+  `;
+
+  out.querySelectorAll(".btn-danger").forEach(btn=>{
+    btn.addEventListener("click", ()=> openDeleteModal(btn.dataset.key, btn.dataset.name));
+  });
+}
+
+function openDeleteModal(key, name){
+  pendingDelete = key;
+  document.getElementById("confirmModalText").textContent =
+    `Dies entfernt die Stimme von ${name} unwiderruflich. Die Person kann anschließend erneut abstimmen. Nutze diese Funktion nur, wenn jemand fälschlicherweise für eine andere Person abgestimmt hat oder ein Fehler vorliegt.`;
+  document.getElementById("confirmModal").hidden = false;
+  document.getElementById("confirmCancel").focus();
+}
+
+function closeModal(){
+  pendingDelete = null;
+  document.getElementById("confirmModal").hidden = true;
+}
+
+async function confirmDelete(){
+  if(!pendingDelete) return closeModal();
+  await deleteRecord(pendingDelete);
+  closeModal();
+  await refreshRecords();
+  renderElectionsTab();
+  renderStatsTab();
+  renderFinalTab();
+  renderTurnoutTab();
+}
+
+// --- Tab: Finale Auswertung ---
+function renderFinalTab(){
+  const out = document.getElementById("finalOutput");
+  const completed = allRecords.filter(r => r.completed);
+  let html = `<p>${completed.length} abgeschlossene Stimmen insgesamt.</p>`;
+
+  REGIONS.forEach(region => {
+    const recs = completed.filter(r => r.region === region);
+    if(!recs.length){
+      html += `<p><strong>${region}:</strong> noch keine abgeschlossenen Stimmen.</p>`;
+      return;
+    }
+    const mayorCounts = {};
+    recs.forEach(r => { if(r.mayorVote) mayorCounts[r.mayorVote] = (mayorCounts[r.mayorVote]||0)+1; });
+    const mayorWinner = Object.entries(mayorCounts).sort((a,b)=>b[1]-a[1])[0];
+
+    const councilCounts = {};
+    recs.forEach(r => Object.entries(r.councilVotes||{}).forEach(([n,v]) => { councilCounts[n]=(councilCounts[n]||0)+v; }));
+    const councilTop = Object.entries(councilCounts).sort((a,b)=>b[1]-a[1])[0];
+
+    html += `<p><strong>${region}:</strong> Bürgermeister/in-Sieger/in ${mayorWinner ? escapeHtml(mayorWinner[0])+" ("+mayorWinner[1]+" Stimmen)" : "–"}. Meiste Ratsstimmen: ${councilTop ? escapeHtml(councilTop[0])+" ("+councilTop[1]+")" : "–"}.</p>`;
+  });
+
+  out.innerHTML = html;
+}
+
+function buildFinalSummaryLines(){
+  const completed = allRecords.filter(r => r.completed);
+  const lines = [
+    "Kommunalwahl 2026 – Endergebnis",
+    "Erstellt am " + new Date().toLocaleDateString("de-DE"),
+    "Abgeschlossene Stimmen insgesamt: " + completed.length,
+    ""
+  ];
+  REGIONS.forEach(region => {
+    const recs = completed.filter(r => r.region === region);
+    lines.push(region + ":");
+    if(!recs.length){
+      lines.push("  Noch keine abgeschlossenen Stimmen.");
+      lines.push("");
+      return;
+    }
+    const mayorCounts = {};
+    recs.forEach(r => { if(r.mayorVote) mayorCounts[r.mayorVote] = (mayorCounts[r.mayorVote]||0)+1; });
+    const mayorWinner = Object.entries(mayorCounts).sort((a,b)=>b[1]-a[1])[0];
+    const councilCounts = {};
+    recs.forEach(r => Object.entries(r.councilVotes||{}).forEach(([n,v]) => { councilCounts[n]=(councilCounts[n]||0)+v; }));
+    const councilTop = Object.entries(councilCounts).sort((a,b)=>b[1]-a[1])[0];
+    lines.push("  Buergermeister/in: " + (mayorWinner ? mayorWinner[0]+" - "+mayorWinner[1]+" Stimmen" : "keine Angabe"));
+    lines.push("  Meiste Ratsstimmen: " + (councilTop ? councilTop[0]+" - "+councilTop[1] : "keine Angabe"));
+    lines.push("");
+  });
+  return lines;
+}
+
+function downloadFinalPdf(){
+  const lines = buildFinalSummaryLines();
+  if(window.jspdf && window.jspdf.jsPDF){
+    try{
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      let y = 20;
+      doc.setFontSize(16);
+      doc.text(lines[0], 14, y); y += 8;
+      doc.setFontSize(10);
+      doc.text(lines[1], 14, y); y += 6;
+      doc.text(lines[2], 14, y); y += 10;
+      doc.setFontSize(11);
+      for(let i=4;i<lines.length;i++){
+        if(y > 280){ doc.addPage(); y = 20; }
+        doc.text(lines[i], 14, y);
+        y += 6;
+      }
+      doc.save("Kommunalwahl-2026-Endergebnis.pdf");
+      return;
+    }catch(e){ console.error(e); }
+  }
+  const printArea = document.getElementById("printArea");
+  printArea.innerHTML = "<pre style=\"font-family:'IBM Plex Sans',sans-serif; white-space:pre-wrap;\">" + escapeHtml(lines.join("\n")) + "</pre>";
+  printArea.hidden = false;
+  window.print();
+  printArea.hidden = true;
+}
+
+// --- Tab: Jahrgänge im Detail ---
+function renderTurnoutTab(){
+  const jgFilter = document.getElementById("turnoutJahrgang").value || "all";
+  const out = document.getElementById("turnoutOutput");
+  const records = allRecords.filter(r => jgFilter==="all" ? true : String(r.jahrgang) === jgFilter);
+
+  const totalDone = records.filter(r => r.completed).length;
+  const totalPending = records.length - totalDone;
+
+  const chartData = [
+    {label:"Abgestimmt", value: totalDone},
+    {label:"Nicht abgeschlossen", value: totalPending}
+  ];
+
+  const byKlasse = {};
+  records.forEach(r => {
+    byKlasse[r.klasse] = byKlasse[r.klasse] || {done:0, pending:0};
+    if(r.completed) byKlasse[r.klasse].done++; else byKlasse[r.klasse].pending++;
+  });
+  const klasseBarData = Object.keys(byKlasse).sort().map(k => ({label:"Klasse "+k, value: byKlasse[k].done}));
+
+  let listHtml = "";
+  Object.keys(byKlasse).sort().forEach(klasse => {
+    const total = byKlasse[klasse].done + byKlasse[klasse].pending;
+    listHtml += `<div class="klasse-group"><h5>Klasse ${escapeHtml(klasse)} — ${byKlasse[klasse].done} von ${total} abgestimmt</h5>`;
+    records.filter(r => r.klasse === klasse).forEach(r => {
+      listHtml += `<div class="student-row"><span>${escapeHtml(r.vorname)} ${escapeHtml(r.nachname)}</span>${statusBadge(r)}</div>`;
+    });
+    listHtml += `</div>`;
+  });
+  if(!records.length) listHtml = "<p>Keine Anmeldungen in diesem Jahrgang.</p>";
+
+  out.innerHTML = `
+    <p>${records.length} Anmeldungen insgesamt, davon ${totalDone} abgeschlossen.</p>
+    <div class="chart-block"><h3>Abgestimmt vs. nicht abgeschlossen</h3>${pieChart(chartData)}</div>
+    <div class="chart-block"><h3>Abgeschlossen je Klasse</h3>${barChart(klasseBarData)}</div>
+    <h3>Übersicht</h3>
+    ${listHtml}
+  `;
+}
+
+route();
+</script>
+</body>
+</html>
