@@ -86,7 +86,7 @@
   @keyframes fade{ from{ opacity:0; transform:translateY(4px);} to{opacity:1; transform:translateY(0);} }
 
   label{ display:block; font-size:.85rem; color:var(--ink-soft); margin-bottom:1.1rem; }
-  label input{
+  label input, label select{
     display:block;
     width:100%;
     margin-top:.35rem;
@@ -98,7 +98,8 @@
     border:none;
     border-bottom:1.5px solid var(--line);
   }
-  label input:focus{ outline:none; border-bottom-color:var(--accent); }
+  label select{ background-color:var(--card); }
+  label input:focus, label select:focus{ outline:none; border-bottom-color:var(--accent); }
   .field-error{ color:var(--accent); font-size:.8rem; margin:-0.7rem 0 1.1rem; }
 
   .btn-primary{
@@ -344,9 +345,33 @@
           <input type="text" id="nachname" autocomplete="family-name" required>
         </label>
         <label>Klasse
-          <input type="text" id="klasse" placeholder="z. B. 9b oder 12" pattern="^(?:8|9|10|11)[A-Za-z]$|^(?:12|13)$" required>
+          <select id="klasse" required>
+            <option value="" disabled selected>Bitte wählen</option>
+            <option value="1">1 (Testklasse)</option>
+            <option value="8a">8a</option>
+            <option value="8b">8b</option>
+            <option value="8c">8c</option>
+            <option value="8d">8d</option>
+            <option value="8e">8e</option>
+            <option value="9a">9a</option>
+            <option value="9b">9b</option>
+            <option value="9c">9c</option>
+            <option value="9d">9d</option>
+            <option value="9e">9e</option>
+            <option value="10a">10a</option>
+            <option value="10b">10b</option>
+            <option value="10c">10c</option>
+            <option value="10d">10d</option>
+            <option value="10e">10e</option>
+            <option value="11a">11a</option>
+            <option value="11b">11b</option>
+            <option value="11c">11c</option>
+            <option value="11d">11d</option>
+            <option value="11e">11e</option>
+            <option value="12">12</option>
+            <option value="13">13</option>
+          </select>
         </label>
-        <p id="klasseError" class="field-error" hidden>Bitte im Format 9b eingeben (Klasse 8–11 mit Buchstabe) oder 12 (Klasse 12–13 ohne Buchstabe).</p>
         <label>Geburtsdatum
           <input type="date" id="geburtsdatum" required>
         </label>
@@ -564,7 +589,7 @@ function parseJahrgang(klasse){
 
 // Klasse 8-11: Zahl + genau ein Buchstabe (z. B. "9b").
 // Klasse 12-13: nur die Zahl, kein Buchstabe (z. B. "12").
-const KLASSE_PATTERN = /^(?:8|9|10|11)[A-Za-z]$|^(?:12|13)$/;
+// (Klasse wird jetzt über ein Auswahlfeld erfasst, daher keine Formatprüfung mehr nötig)
 
 async function getRecord(key){
   if(!FIREBASE_READY) return null;
@@ -646,9 +671,6 @@ function showBlocked(){
 }
 
 // --- Step 1: Anmeldedaten ---
-document.getElementById("klasse").addEventListener("input", ()=>{
-  document.getElementById("klasseError").hidden = true;
-});
 
 document.getElementById("formIntro").addEventListener("submit", async e=>{
   e.preventDefault();
@@ -658,42 +680,32 @@ document.getElementById("formIntro").addEventListener("submit", async e=>{
 
   state.vorname = document.getElementById("vorname").value.trim();
   state.nachname = document.getElementById("nachname").value.trim();
-  state.klasse = document.getElementById("klasse").value.trim();
+  state.klasse = document.getElementById("klasse").value;
   state.geburtsdatum = document.getElementById("geburtsdatum").value;
   state.key = studentKey(state.vorname, state.nachname, state.klasse, state.geburtsdatum);
   state.jahrgang = parseJahrgang(state.klasse);
 
-  if(!isTestProfile()){
-    if(!KLASSE_PATTERN.test(state.klasse)){
-      document.getElementById("klasseError").hidden = false;
-      submitBtn.disabled = false;
-      submitBtn.textContent = "Weiter";
-      return;
-    }
-    document.getElementById("klasseError").hidden = true;
+  const existing = await getRecord(state.key);
 
-    const existing = await getRecord(state.key);
+  if(existing && existing.completed && !isTestProfile()){
+    showBlocked();
+    return;
+  }
 
-    if(existing && existing.completed){
-      showBlocked();
-      return;
-    }
-
-    if(!existing){
-      await saveRecord({
-        key: state.key,
-        vorname: state.vorname,
-        nachname: state.nachname,
-        klasse: state.klasse,
-        jahrgang: state.jahrgang,
-        region: null,
-        mayorVote: null,
-        councilVotes: {},
-        rating: null,
-        completed: false,
-        startedAt: new Date().toISOString()
-      });
-    }
+  if(!existing){
+    await saveRecord({
+      key: state.key,
+      vorname: state.vorname,
+      nachname: state.nachname,
+      klasse: state.klasse,
+      jahrgang: state.jahrgang,
+      region: null,
+      mayorVote: null,
+      councilVotes: {},
+      rating: null,
+      completed: false,
+      startedAt: new Date().toISOString()
+    });
   }
 
   submitBtn.disabled = false;
@@ -736,10 +748,8 @@ document.getElementById("btnRegionNext").addEventListener("click", async ()=>{
   renderMayor();
   renderCouncil();
 
-  if(!isTestProfile()){
-    const rec = await getRecord(state.key);
-    if(rec){ rec.region = state.region; await saveRecord(rec); }
-  }
+  const rec = await getRecord(state.key);
+  if(rec){ rec.region = state.region; await saveRecord(rec); }
 
   btn.disabled = false;
   btn.textContent = originalLabel;
@@ -861,17 +871,15 @@ document.getElementById("btnRatingNext").addEventListener("click", async ()=>{
   btn.disabled = true;
   btn.textContent = "Wird gespeichert…";
 
-  if(!isTestProfile()){
-    const rec = await getRecord(state.key);
-    if(rec){
-      rec.region = state.region;
-      rec.mayorVote = state.mayorVote;
-      rec.councilVotes = Object.assign({}, state.councilVotes);
-      rec.rating = state.rating;
-      rec.completed = true;
-      rec.completedAt = new Date().toISOString();
-      await saveRecord(rec);
-    }
+  const rec = await getRecord(state.key);
+  if(rec){
+    rec.region = state.region;
+    rec.mayorVote = state.mayorVote;
+    rec.councilVotes = Object.assign({}, state.councilVotes);
+    rec.rating = state.rating;
+    rec.completed = true;
+    rec.completedAt = new Date().toISOString();
+    await saveRecord(rec);
   }
 
   btn.disabled = false;
@@ -926,6 +934,10 @@ function barChart(data){
     rows += `<text x="${leftPad+w+6}" y="${y+barH*0.7}" class="bar-value">${d.value}</text>`;
   });
   return `<svg viewBox="0 0 ${leftPad+chartW+40} ${height}" class="chart-bar">${rows}</svg>`;
+}
+
+function isTestRecord(r){
+  return !!r && r.key === TEST_KEY;
 }
 
 function statusBadge(rec){
@@ -1060,7 +1072,7 @@ function renderStatsTab(){
   const region = document.getElementById("statsRegion").value || "all";
   const band = document.getElementById("statsBand").value || "all";
   const out = document.getElementById("statsOutput");
-  const completed = allRecords.filter(r => r.completed && bandMatches(r.jahrgang, band));
+  const completed = allRecords.filter(r => r.completed && !isTestRecord(r) && bandMatches(r.jahrgang, band));
 
   if(region === "all"){
     const byRegion = {};
@@ -1106,7 +1118,7 @@ function renderElectionsTab(){
   const region = document.getElementById("electionsRegion").value || REGIONS[0];
   const out = document.getElementById("electionsOutput");
   const regionRecords = allRecords.filter(r => r.region === region);
-  const completedRecords = regionRecords.filter(r => r.completed);
+  const completedRecords = regionRecords.filter(r => r.completed && !isTestRecord(r));
 
   const mayorCounts = {};
   (CANDIDATES[region] ? CANDIDATES[region].mayor : []).forEach(c => mayorCounts[c]=0);
@@ -1136,7 +1148,7 @@ function renderElectionsTab(){
       participantsHtml += `<div class="klasse-group"><h5>Klasse ${escapeHtml(klasse)}</h5>`;
       groups[jg][klasse].forEach(r => {
         participantsHtml += `<div class="student-row">
-          <span>${escapeHtml(r.vorname)} ${escapeHtml(r.nachname)} ${statusBadge(r)}</span>
+          <span>${escapeHtml(r.vorname)} ${escapeHtml(r.nachname)} ${statusBadge(r)}${isTestRecord(r) ? ' <span class="status-badge">Test</span>' : ''}</span>
           <button class="btn-danger" data-key="${escapeHtml(r.key)}" data-name="${escapeHtml(r.vorname+" "+r.nachname)}" type="button">Entfernen</button>
         </div>`;
       });
@@ -1187,7 +1199,7 @@ async function confirmDelete(){
 // --- Tab: Finale Auswertung ---
 function renderFinalTab(){
   const out = document.getElementById("finalOutput");
-  const completed = allRecords.filter(r => r.completed);
+  const completed = allRecords.filter(r => r.completed && !isTestRecord(r));
   let html = `<p>${completed.length} abgeschlossene Stimmen insgesamt.</p>`;
 
   REGIONS.forEach(region => {
@@ -1211,7 +1223,7 @@ function renderFinalTab(){
 }
 
 function buildFinalSummaryLines(){
-  const completed = allRecords.filter(r => r.completed);
+  const completed = allRecords.filter(r => r.completed && !isTestRecord(r));
   const lines = [
     "Kommunalwahl 2026 – Endergebnis",
     "Erstellt am " + new Date().toLocaleDateString("de-DE"),
@@ -1272,7 +1284,7 @@ function downloadFinalPdf(){
 function renderTurnoutTab(){
   const jgFilter = document.getElementById("turnoutJahrgang").value || "all";
   const out = document.getElementById("turnoutOutput");
-  const records = allRecords.filter(r => jgFilter==="all" ? true : String(r.jahrgang) === jgFilter);
+  const records = allRecords.filter(r => !isTestRecord(r) && (jgFilter==="all" ? true : String(r.jahrgang) === jgFilter));
 
   const totalDone = records.filter(r => r.completed).length;
   const totalPending = records.length - totalDone;
