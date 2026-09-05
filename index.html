@@ -246,7 +246,7 @@
 
   .filter-row{ display:flex; gap:1.25rem; flex-wrap:wrap; align-items:flex-end; margin-bottom:1.6rem; }
   .filter-row label{ font-size:.85rem; color:var(--ink-soft); margin-bottom:0; }
-  .filter-row select{
+  .filter-row select, .filter-row input[type="text"]{
     display:block; margin-top:.3rem;
     padding:.4rem .5rem;
     border:1px solid var(--line);
@@ -254,6 +254,7 @@
     font:inherit; font-size:.95rem;
     color:var(--ink);
   }
+  .filter-row input[type="text"]{ min-width:180px; }
   .btn-secondary{
     padding:.55rem .9rem;
     border:1px solid var(--ink);
@@ -332,9 +333,24 @@
 
   <main class="ballot-card" id="card">
     <div class="progress" id="progress" aria-hidden="true"></div>
-    <p class="step-label"><span id="stepNum">1</span> von 6</p>
+    <p class="step-label"><span id="stepNum">1</span> von <span id="stepTotal">1</span></p>
 
-    <section id="step-intro" class="step">
+    <section id="step-welcome" class="step">
+      <h2>So läuft die Wahl ab</h2>
+      <p>In wenigen Schritten gibst du deine Stimme für die Kommunalwahl 2026 ab:</p>
+      <ol class="result-list">
+        <li>Deine Daten eintragen</li>
+        <li>Deine Region auswählen</li>
+        <li>Bürgermeister/in wählen – 1 Stimme</li>
+        <li>Gemeinderat wählen – 3 Stimmen, bis zu 3 pro Person</li>
+        <li>Auswahl bestätigen</li>
+        <li>Website bewerten</li>
+      </ol>
+      <p>Du kannst nur einmal abstimmen. Nach dem Bestätigen deiner Wahl lässt sie sich nicht mehr ändern.</p>
+      <button class="btn-primary" id="btnWelcomeNext" type="button">Los geht's</button>
+    </section>
+
+    <section id="step-intro" class="step" hidden>
       <h2>Bevor es losgeht</h2>
       <p>Trag deine Daten ein, um an der Musterwahl teilzunehmen.</p>
       <form id="formIntro">
@@ -402,6 +418,13 @@
       <button class="btn-primary" id="btnCouncilNext">Weiter</button>
     </section>
 
+    <section id="step-confirm" class="step" hidden>
+      <h2>Zusammenfassung</h2>
+      <p>Bitte überprüfe deine Auswahl. Nach dem Abschicken kann die Wahl nicht mehr geändert werden.</p>
+      <div id="confirmSummary"></div>
+      <button class="btn-primary" id="btnConfirmSubmit" type="button">Wirklich abschicken</button>
+    </section>
+
     <section id="step-rating" class="step" hidden>
       <h2>Wie war's?</h2>
       <p>Bewerte diese Website mit 1 bis 5 Sternen.</p>
@@ -460,7 +483,22 @@
           <label>Region <select id="electionsRegion"></select></label>
           <button class="btn-secondary" id="electionsRefresh" type="button">Aktualisieren</button>
         </div>
-        <div id="electionsOutput"></div>
+        <div id="electionsResults"></div>
+
+        <h3>Teilnehmer/innen (<span id="participantsCount">0</span>)</h3>
+        <div class="filter-row">
+          <label>Suche
+            <input type="text" id="participantsSearch" placeholder="Name suchen">
+          </label>
+          <label>Status
+            <select id="participantsStatusFilter">
+              <option value="all">Alle</option>
+              <option value="done">Abgestimmt</option>
+              <option value="pending">Nicht abgeschlossen</option>
+            </select>
+          </label>
+        </div>
+        <div id="participantsContainer"></div>
       </section>
 
       <section id="tab-final" class="admin-panel" hidden>
@@ -514,7 +552,7 @@ function makeCandidates(){
 const CANDIDATES = {};
 REGIONS.forEach(r => CANDIDATES[r] = makeCandidates());
 
-const STEPS = ["step-intro","step-region","step-mayor","step-council","step-rating","step-thanks"];
+const STEPS = ["step-welcome","step-intro","step-region","step-mayor","step-council","step-confirm","step-rating","step-thanks"];
 
 const state = {
   vorname:"", nachname:"", klasse:"", geburtsdatum:"",
@@ -649,6 +687,7 @@ function renderProgress(){
     wrap.appendChild(dot);
   });
   document.getElementById("stepNum").textContent = stepIndex+1;
+  document.getElementById("stepTotal").textContent = STEPS.length;
 }
 
 function goToStep(i){
@@ -669,6 +708,9 @@ function showBlocked(){
   document.getElementById("progress").hidden = true;
   document.querySelector(".step-label").hidden = true;
 }
+
+// --- Step 0: Willkommen ---
+document.getElementById("btnWelcomeNext").addEventListener("click", ()=> goToStep(1));
 
 // --- Step 1: Anmeldedaten ---
 
@@ -711,7 +753,7 @@ document.getElementById("formIntro").addEventListener("submit", async e=>{
   submitBtn.disabled = false;
   submitBtn.textContent = "Weiter";
   renderRegions();
-  goToStep(1);
+  goToStep(2);
 });
 
 // --- Step 2: Region ---
@@ -753,7 +795,7 @@ document.getElementById("btnRegionNext").addEventListener("click", async ()=>{
 
   btn.disabled = false;
   btn.textContent = originalLabel;
-  goToStep(2);
+  goToStep(3);
 });
 
 // --- Step 3: Bürgermeister/in ---
@@ -781,7 +823,7 @@ function renderMayor(){
   });
 }
 
-document.getElementById("btnMayorNext").addEventListener("click", ()=> goToStep(3));
+document.getElementById("btnMayorNext").addEventListener("click", ()=> goToStep(4));
 
 // --- Step 4: Gemeinderat (3 Stimmen, bis zu 3 pro Person) ---
 function remainingCouncilVotes(){
@@ -843,9 +885,46 @@ function updateCouncilUI(){
   });
 }
 
-document.getElementById("btnCouncilNext").addEventListener("click", ()=> goToStep(4));
+function renderConfirmSummary(){
+  const councilEntries = Object.entries(state.councilVotes).filter(([,v]) => v > 0);
+  const councilHtml = councilEntries.length
+    ? councilEntries.map(([name,v]) => `<li>${escapeHtml(name)} <span class="count">${v} ${v===1?'Stimme':'Stimmen'}</span></li>`).join("")
+    : `<li>Keine Stimme vergeben</li>`;
+  document.getElementById("confirmSummary").innerHTML = `
+    <p><strong>Region:</strong> ${escapeHtml(state.region||"–")}</p>
+    <p><strong>Bürgermeister/in:</strong> ${state.mayorVote ? escapeHtml(state.mayorVote) : "keine Angabe"}</p>
+    <p><strong>Gemeinderat:</strong></p>
+    <ul class="result-list">${councilHtml}</ul>
+  `;
+}
 
-// --- Step 5: Bewertung ---
+document.getElementById("btnCouncilNext").addEventListener("click", ()=>{
+  renderConfirmSummary();
+  goToStep(5);
+});
+
+document.getElementById("btnConfirmSubmit").addEventListener("click", async ()=>{
+  const btn = document.getElementById("btnConfirmSubmit");
+  btn.disabled = true;
+  btn.textContent = "Wird gespeichert…";
+
+  const rec = await getRecord(state.key);
+  if(rec){
+    rec.region = state.region;
+    rec.mayorVote = state.mayorVote;
+    rec.councilVotes = Object.assign({}, state.councilVotes);
+    rec.completed = true;
+    rec.completedAt = new Date().toISOString();
+    await saveRecord(rec);
+  }
+
+  btn.disabled = false;
+  btn.textContent = "Wirklich abschicken";
+  renderStars();
+  goToStep(6);
+});
+
+// --- Step 6: Bewertung ---
 function renderStars(){
   const row = document.getElementById("starRow");
   row.innerHTML = "";
@@ -873,18 +952,13 @@ document.getElementById("btnRatingNext").addEventListener("click", async ()=>{
 
   const rec = await getRecord(state.key);
   if(rec){
-    rec.region = state.region;
-    rec.mayorVote = state.mayorVote;
-    rec.councilVotes = Object.assign({}, state.councilVotes);
     rec.rating = state.rating;
-    rec.completed = true;
-    rec.completedAt = new Date().toISOString();
     await saveRecord(rec);
   }
 
   btn.disabled = false;
   btn.textContent = "Weiter";
-  goToStep(5);
+  goToStep(7);
 });
 
 renderProgress();
@@ -1054,6 +1128,8 @@ function setupAdminFilters(){
 
   document.getElementById("electionsRegion").addEventListener("change", renderElectionsTab);
   document.getElementById("electionsRefresh").addEventListener("click", async ()=>{ await refreshRecords(); renderElectionsTab(); });
+  document.getElementById("participantsSearch").addEventListener("input", renderParticipantsList);
+  document.getElementById("participantsStatusFilter").addEventListener("change", renderParticipantsList);
 
   document.getElementById("turnoutJahrgang").addEventListener("change", renderTurnoutTab);
   document.getElementById("turnoutRefresh").addEventListener("click", async ()=>{ await refreshRecords(); renderTurnoutTab(); });
@@ -1114,11 +1190,13 @@ function renderStatsTab(){
 }
 
 // --- Tab: Wahlen selbst ---
+let currentRegionRecords = [];
+
 function renderElectionsTab(){
   const region = document.getElementById("electionsRegion").value || REGIONS[0];
-  const out = document.getElementById("electionsOutput");
-  const regionRecords = allRecords.filter(r => r.region === region);
-  const completedRecords = regionRecords.filter(r => r.completed && !isTestRecord(r));
+  const out = document.getElementById("electionsResults");
+  currentRegionRecords = allRecords.filter(r => r.region === region);
+  const completedRecords = currentRegionRecords.filter(r => r.completed && !isTestRecord(r));
 
   const mayorCounts = {};
   (CANDIDATES[region] ? CANDIDATES[region].mayor : []).forEach(c => mayorCounts[c]=0);
@@ -1132,8 +1210,34 @@ function renderElectionsTab(){
   const councilList = Object.entries(councilCounts).sort((a,b)=>b[1]-a[1])
     .map(([name,count]) => `<li>${escapeHtml(name)} <span class="count">${count}</span></li>`).join("");
 
+  out.innerHTML = `
+    <h3>Ergebnis Bürgermeister/in</h3>
+    <ol class="result-list">${mayorList || "<li>Noch keine Stimmen.</li>"}</ol>
+    <h3>Ergebnis Gemeinderat</h3>
+    <ol class="result-list">${councilList || "<li>Noch keine Stimmen.</li>"}</ol>
+  `;
+
+  renderParticipantsList();
+}
+
+function renderParticipantsList(){
+  const search = (document.getElementById("participantsSearch").value || "").trim().toLowerCase();
+  const statusFilter = document.getElementById("participantsStatusFilter").value || "all";
+
+  const filtered = currentRegionRecords.filter(r => {
+    if(statusFilter === "done" && !r.completed) return false;
+    if(statusFilter === "pending" && r.completed) return false;
+    if(search){
+      const fullName = (r.vorname+" "+r.nachname).toLowerCase();
+      if(!fullName.includes(search)) return false;
+    }
+    return true;
+  });
+
+  document.getElementById("participantsCount").textContent = filtered.length;
+
   const groups = {};
-  regionRecords.forEach(r => {
+  filtered.forEach(r => {
     const jg = r.jahrgang || "unbekannt";
     groups[jg] = groups[jg] || {};
     groups[jg][r.klasse] = groups[jg][r.klasse] || [];
@@ -1156,18 +1260,11 @@ function renderElectionsTab(){
     });
     participantsHtml += `</div>`;
   });
-  if(!jgKeys.length) participantsHtml = `<p>Noch keine Anmeldungen für diese Region.</p>`;
+  if(!jgKeys.length) participantsHtml = `<p>Keine passenden Einträge.</p>`;
 
-  out.innerHTML = `
-    <h3>Ergebnis Bürgermeister/in</h3>
-    <ol class="result-list">${mayorList || "<li>Noch keine Stimmen.</li>"}</ol>
-    <h3>Ergebnis Gemeinderat</h3>
-    <ol class="result-list">${councilList || "<li>Noch keine Stimmen.</li>"}</ol>
-    <h3>Teilnehmer/innen (${regionRecords.length})</h3>
-    ${participantsHtml}
-  `;
-
-  out.querySelectorAll(".btn-danger").forEach(btn=>{
+  const container = document.getElementById("participantsContainer");
+  container.innerHTML = participantsHtml;
+  container.querySelectorAll(".btn-danger").forEach(btn=>{
     btn.addEventListener("click", ()=> openDeleteModal(btn.dataset.key, btn.dataset.name));
   });
 }
