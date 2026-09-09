@@ -377,13 +377,10 @@
 
     <section id="step-intro" class="step" hidden>
       <h2>Bevor es losgeht</h2>
-      <p>Trag deine Daten ein, um an der Musterwahl teilzunehmen.</p>
+      <p>Trag dein Passwort und deine Klasse ein, um an der Musterwahl teilzunehmen.</p>
       <form id="formIntro">
-        <label>Vorname
-          <input type="text" id="vorname" autocomplete="given-name" required>
-        </label>
-        <label>Nachname
-          <input type="text" id="nachname" autocomplete="family-name" required>
+        <label>Passwort
+          <input type="text" id="password" inputmode="numeric" pattern="\d{6}" maxlength="6" autocomplete="off" placeholder="6-stelliger Code" required>
         </label>
         <label>Klasse
           <select id="klasse" required>
@@ -413,7 +410,7 @@
             <option value="13">13</option>
           </select>
         </label>
-        <!-- Hinweis: Hier kann später bei Bedarf ein Passwort-Feld ergänzt werden -->
+        <p id="passwordError" class="field-error" hidden>Passwort und Klasse stimmen nicht überein. Bitte überprüfe deine Eingabe.</p>
         <button type="submit" class="btn-primary">Weiter</button>
       </form>
     </section>
@@ -522,7 +519,7 @@
         <h3>Teilnehmer/innen (<span id="participantsCount">0</span>)</h3>
         <div class="filter-row">
           <label>Suche
-            <input type="text" id="participantsSearch" placeholder="Name suchen">
+            <input type="text" id="participantsSearch" placeholder="Code suchen">
           </label>
           <label>Status
             <select id="participantsStatusFilter">
@@ -671,7 +668,7 @@ CANDIDATES["Glandorf"] = {
     {name:"Ann-Katrin Micke", party:"FDP"},
     {name:"Bastian Wichmann", party:"FDP"},
     {name:"Rob Mulckhuijse", party:"FDP"},
-    {name:"Antonius Soetebe", party:"FDP"},
+    {name:"Antonius Soetebeer", party:"FDP"},
     {name:"Metin Ograk", party:"FDP"},
     {name:"Ralf Wiebusch", party:"FDP"},
     {name:"Matthias Keuter", party:"FDP"},
@@ -679,10 +676,183 @@ CANDIDATES["Glandorf"] = {
   ]
 };
 
+// Hilter: echte Kandidat:innen der Kommunalwahl 2026.
+// Auch hier nur ein/e Bürgermeisterkandidat/in -> Ja/Nein-Wahl.
+CANDIDATES["Hilter"] = {
+  mayorMode: "yesno",
+  mayorInfo: { name: "Marc Schewski", details: "CDU" },
+  mayor: ["Ja", "Nein"],
+  council: [
+    {name:"Rottmann, Christiane", party:"CDU"},
+    {name:"Greve, Volker", party:"CDU"},
+    {name:"Wedekämper, Nils", party:"CDU"},
+    {name:"Schriever, Henning", party:"CDU"},
+    {name:"Kuhr, Ramona", party:"CDU"},
+    {name:"Behrenswerth, Rainer", party:"CDU"},
+    {name:"Dütemeyer, Michael", party:"CDU"},
+    {name:"Schulte-Uffelage, Henning", party:"CDU"},
+    {name:"Tepe, Ansgar", party:"CDU"},
+    {name:"Peters, Lars", party:"CDU"},
+    {name:"Fuhrmann, Waldemar", party:"CDU"},
+    {name:"Halbrügge, Andreas", party:"CDU"},
+    {name:"Hartmann, Matthias", party:"CDU"},
+    {name:"Hörmeyer, Christian", party:"CDU"},
+    {name:"König, Simon", party:"CDU"},
+    {name:"Rottmann, Sabrina", party:"CDU"},
+    {name:"Albers, Ruth", party:"SPD"},
+    {name:"Krebs, Andreas", party:"SPD"},
+    {name:"Pohlmann, Michael", party:"SPD"},
+    {name:"Schürmeyer, Markus", party:"SPD"},
+    {name:"Hilmes, Melanie", party:"SPD"},
+    {name:"Abendroth, Monika", party:"SPD"},
+    {name:"Rahe, Marcel", party:"SPD"},
+    {name:"Söger, Marion", party:"SPD"},
+    {name:"Waack, Hartmut", party:"SPD"},
+    {name:"Wortmann, Laura", party:"SPD"},
+    {name:"Maus, Thomas", party:"SPD"},
+    {name:"Hoffstadt, Gina-Christiane", party:"SPD"},
+    {name:"Hellnich, Sören", party:"SPD"},
+    {name:"Holtgrewe, Carina", party:"SPD"},
+    {name:"Krenzien, Henning", party:"SPD"},
+    {name:"Zimmermann, Jennifer", party:"SPD"},
+    {name:"Hilbrenner, Stephanie", party:"SPD"},
+    {name:"Telkämper, Ralf", party:"SPD"},
+    {name:"Lang, Christina", party:"SPD"},
+    {name:"Dickmeyer, Kathrin", party:"GRÜNE"},
+    {name:"Pilgrim, Daniel", party:"GRÜNE"},
+    {name:"Brüne, Wolfgang", party:"GRÜNE"},
+    {name:"Kavermann, Rainer", party:"GRÜNE"},
+    {name:"Moldt, Yacine", party:"GRÜNE"},
+    {name:"Wenner, Marco", party:"FDP"},
+    {name:"Efimov, Rudolf", party:"AfD"}
+  ]
+};
+
+// Bad Iburg: echte Gemeinderat-Kandidat:innen der Kommunalwahl 2026.
+// Bürgermeister/in steht noch nicht fest -> mayor bleibt vorerst der
+// generische Platzhalter aus makeCandidates().
+// Bad Iburg: Bürgermeister vorläufig eingetragen, NICHT offiziell bestätigt.
+// Indizien: Amtsinhaber Große-Albers tritt erneut parteilos an, SPD und
+// Grüne stellen extra keinen eigenen Kandidaten auf. Ob auch CDU/FDP/AfD
+// verzichtet haben, ist unklar -> unbedingt noch offiziell gegenprüfen.
+CANDIDATES["Bad Iburg"].mayorMode = "yesno";
+CANDIDATES["Bad Iburg"].mayorInfo = { name: "Daniel Große-Albers", details: "parteilos, amtierender Bürgermeister" };
+CANDIDATES["Bad Iburg"].mayor = ["Ja", "Nein"];
+CANDIDATES["Bad Iburg"].council = [
+  {name:"Jochen Wiek", party:"SPD"},
+  {name:"Hannes Geesen", party:"SPD"},
+  {name:"Christian Berdelsmann", party:"SPD"},
+  {name:"Olaf Herzog", party:"SPD"},
+  {name:"Heinz E. Wallenstein", party:"SPD"},
+  {name:"Wilfried Müller", party:"SPD"},
+  {name:"Martin Grünig", party:"SPD"},
+  {name:"Mario Kasselmann", party:"CDU"},
+  {name:"Melanie Brandebusemeyer", party:"CDU"},
+  {name:"Christian Averdiek", party:"CDU"},
+  {name:"Julian Leuders", party:"CDU"},
+  {name:"Florian Epping", party:"CDU"},
+  {name:"Sven Hotfilter", party:"CDU"},
+  {name:"Joseph Rottmann", party:"CDU"},
+  {name:"Thomas Walgern", party:"CDU"},
+  {name:"Michael Cromme", party:"CDU"},
+  {name:"Stefan Brunn", party:"CDU"},
+  {name:"Lena Melcher", party:"CDU"},
+  {name:"Michael Jasper", party:"CDU"},
+  {name:"Thomas Hölscher", party:"CDU"},
+  {name:"André Dellemeschnig", party:"CDU"},
+  {name:"Matthias Seestern-Pauly", party:"FDP"},
+  {name:"Nicole Hölscher", party:"FDP"},
+  {name:"Hans-Otto Petersmann", party:"FDP"},
+  {name:"Mechthild Schöning", party:"FDP"},
+  {name:"Antje Holtmeier", party:"FDP"},
+  {name:"Linus Schmitz", party:"FDP"},
+  {name:"Oliver Harms", party:"FDP"},
+  {name:"Bernhard Heringhaus", party:"FDP"},
+  {name:"Nicole Hartwig", party:"FDP"},
+  {name:"Hans-Jürgen Meschkat", party:"FDP"},
+  {name:"Timo Altevers", party:"FDP"},
+  {name:"Rainer Nasch", party:"FDP"},
+  {name:"Simone Steffen", party:"FDP"},
+  {name:"Heinz-Ingo Altevers", party:"FDP"},
+  {name:"Wolfgang Möller", party:"FDP"},
+  {name:"Meike Herzog", party:"FDP"},
+  {name:"Andreas Ebert", party:"FDP"},
+  {name:"Stephan Seestern-Pauly", party:"FDP"},
+  {name:"Dirk Vinke", party:"FDP"},
+  {name:"Frederic Linke", party:"FDP"},
+  {name:"Uli Janowitz", party:"FDP"},
+  {name:"Jörg Ritterbusch", party:"FDP"},
+  {name:"Ramon Hovestadt", party:"AfD"},
+  {name:"Manuele Hovestadt", party:"AfD"},
+  {name:"Ellen Maria Brinkhege", party:"Einzelbewerberin"},
+  {name:"Andreas Heuer", party:"Fokus Bad Iburg"},
+  {name:"Alexandra Brilka", party:"Fokus Bad Iburg"},
+  {name:"Jürgen Lengwenat", party:"Fokus Bad Iburg"},
+  {name:"Philipp Maller", party:"Fokus Bad Iburg"},
+  {name:"Christian Grimm", party:"Fokus Bad Iburg"},
+  {name:"Beate Jungjohann", party:"Fokus Bad Iburg"},
+  {name:"Ralf Dietrich", party:"Fokus Bad Iburg"},
+  {name:"Patrick van Lier", party:"GRÜNE"},
+  {name:"Manfred Tobergte", party:"GRÜNE"},
+  {name:"Daniel Schneider", party:"GRÜNE"},
+  {name:"Markus Haselmann", party:"GRÜNE"},
+  {name:"Joana Leonhard", party:"GRÜNE"},
+  {name:"Uwe Schäfer", party:"GRÜNE"}
+];
+
+// Bad Laer: echte Gemeinderat-Kandidat:innen der Kommunalwahl 2026.
+// Bürgermeister/in noch nicht mitgeteilt -> mayor bleibt vorerst der
+// generische Platzhalter aus makeCandidates().
+// Bad Laer: echte Gemeinderat-Kandidat:innen der Kommunalwahl 2026.
+// Bürgermeister/in: zwei unabhängige Kandidat:innen -> normale Auswahl (kein Ja/Nein).
+CANDIDATES["Bad Laer"].mayor = ["Anne Krimphoff", "Roland Hemsath"];
+CANDIDATES["Bad Laer"].council = [
+  {name:"Hoffmann, Christoph", party:"CDU"},
+  {name:"Brandt, Adriane", party:"CDU"},
+  {name:"Kleine-Wechelmann, Stefan", party:"CDU"},
+  {name:"Eichholz, Johannes", party:"CDU"},
+  {name:"Richter, Armin", party:"CDU"},
+  {name:"Eichholz-Maj, Malgorzata", party:"CDU"},
+  {name:"Knemeyer, Holger", party:"CDU"},
+  {name:"Sandfort, Burkhard", party:"CDU"},
+  {name:"Steinkamp, Thomas", party:"CDU"},
+  {name:"Domke, David", party:"CDU"},
+  {name:"Franke, Hubert", party:"CDU"},
+  {name:"Mentrup, Jürgen", party:"CDU"},
+  {name:"Hehmann, Christoph", party:"CDU"},
+  {name:"Laane, Alexej", party:"CDU"},
+  {name:"Schulte im Hof, Henrik", party:"CDU"},
+  {name:"Vöge, Frank", party:"CDU"},
+  {name:"Otte, Sebastian", party:"CDU"},
+  {name:"Willmann, Christian", party:"SPD"},
+  {name:"Vehling, Angela", party:"SPD"},
+  {name:"Mönter, Johannes", party:"SPD"},
+  {name:"Lückemeier, Niels", party:"SPD"},
+  {name:"Pues, Maria", party:"SPD"},
+  {name:"Vehling, Sebastian", party:"SPD"},
+  {name:"Peters, Michaela", party:"GRÜNE"},
+  {name:"Rinklake, Ansgar", party:"GRÜNE"},
+  {name:"Dr. Schulte, Georg", party:"GRÜNE"},
+  {name:"Diekamp, Alois", party:"FDP"},
+  {name:"Schulte-Südhoff, Anke", party:"FDP"},
+  {name:"Jakobs, Thilo", party:"FDP"},
+  {name:"Pauk, Heinz-Bernd", party:"FDP"},
+  {name:"Richter, Mischa", party:"FDP"},
+  {name:"Gedikli, Hüseyin", party:"FDP"},
+  {name:"Steinkämper, Marc André", party:"AfD Niedersachsen"},
+  {name:"Lüchtefeld, Nina", party:"BLU"},
+  {name:"Schwöppe, Beate", party:"BLU"},
+  {name:"Schepers, Birgit", party:"BLU"},
+  {name:"Thunhorst, Thea", party:"BLU"},
+  {name:"Keding, Reinhard", party:"BLU"},
+  {name:"Paul, Simone", party:"BLU"},
+  {name:"Schnell, Frank", party:"BLU"}
+];
+
 const STEPS = ["step-welcome","step-intro","step-region","step-mayor","step-council","step-confirm","step-rating","step-thanks"];
 
 const state = {
-  vorname:"", nachname:"", klasse:"",
+  password:"", klasse:"",
   // passwort: "", // Platz für ein später geplantes Passwort-Feld
   key:"", jahrgang:null,
   region:null,
@@ -730,15 +900,101 @@ function withTimeout(promise, ms){
   ]);
 }
 
-// Test-Profil: kann beliebig oft abstimmen, egal ob schon abgestimmt wurde,
-// und ist über "Wahlen selbst" jederzeit löschbar.
-const TEST_KEY = "p|1|1";
+// Test-Profil: Klasse "1" ist als Testklasse reserviert. Jeder Code
+// funktioniert dort ohne Formatprüfung, kann beliebig oft abstimmen
+// (auch wenn schon abgeschlossen) und ist über "Wahlen selbst" löschbar.
 function isTestProfile(){
-  return state.key === TEST_KEY;
+  return state.klasse === "1";
 }
 
-function studentKey(v,n,k){
-  return [v,n,k].map(s => String(s||"").trim().toLowerCase()).join("|");
+function studentKey(password){
+  return String(password||"").trim();
+}
+
+// Liste aller ausgegebenen Codes. Nur Codes aus dieser Liste funktionieren
+// als Login - reines Format-Raten reicht nicht mehr aus.
+const VALID_CODES = new Set([
+  "081026","081028","081033","081090","081096","081115","081143","081204","081224","081239",
+  "081251","081282","081433","081518","081559","081575","081617","081666","081693","081719",
+  "081734","081755","081759","082007","082095","082100","082105","082160","082164","082226",
+  "082285","082349","082353","082368","082430","082460","082559","082604","082619","082715",
+  "082778","082782","082827","082829","082981","083045","083072","083081","083082","083128",
+  "083234","083239","083297","083301","083371","083388","083471","083550","083592","083634",
+  "083678","083722","083748","083850","083888","083907","083997","084074","084167","084168",
+  "084176","084215","084251","084277","084285","084380","084389","084390","084547","084651",
+  "084656","084664","084687","084705","084719","084855","084960","091049","091094","091113",
+  "091142","091143","091147","091157","091164","091225","091253","091270","091272","091371",
+  "091409","091439","091470","091506","091522","091552","091575","091598","091599","091763",
+  "091765","091774","091812","091882","091920","092004","092012","092066","092115","092118",
+  "092162","092258","092274","092301","092349","092391","092395","092433","092465","092480",
+  "092542","092550","092567","092611","092657","092697","092699","092739","092769","092788",
+  "092882","092907","092966","092995","093001","093109","093157","093166","093183","093204",
+  "093270","093306","093332","093383","093513","093520","093544","093553","093614","093624",
+  "093641","093655","093737","093740","093781","093798","093862","093892","093935","093941",
+  "093945","093977","093996","101008","101033","101061","101070","101073","101136","101220",
+  "101226","101235","101236","101244","101249","101286","101339","101485","101498","101527",
+  "101585","101603","101647","101686","101725","101741","101881","101904","101928","102063",
+  "102097","102100","102101","102112","102195","102197","102348","102417","102421","102434",
+  "102442","102485","102550","102670","102675","102690","102746","102747","102827","102883",
+  "102885","103052","103078","103096","103144","103171","103188","103256","103286","103433",
+  "103454","103474","103493","103554","103564","103668","103772","103828","103857","103877",
+  "103883","103896","103946","103949","103993","104003","104060","104061","104169","104195",
+  "104219","104272","104293","104304","104389","104400","104411","104434","104466","104499",
+  "104570","104678","104714","104736","104749","104803","104804","104886","104925","104949",
+  "104981","104992","105052","105059","105063","105070","105071","105083","105123","105162",
+  "105191","105322","105489","105515","105521","105544","105556","105599","105610","105692",
+  "105754","105766","105872","105874","105883","105942","105984","111041","111075","111084",
+  "111135","111245","111253","111272","111308","111324","111430","111469","111536","111579",
+  "111593","111598","111609","111635","111661","111674","111688","111734","111770","111952",
+  "111959","112009","112010","112076","112103","112136","112162","112219","112272","112292",
+  "112310","112470","112519","112542","112551","112557","112577","112627","112637","112670",
+  "112721","112827","112854","112956","113107","113110","113119","113138","113160","113216",
+  "113271","113279","113289","113307","113352","113567","113568","113620","113680","113684",
+  "113735","113761","113837","113900","113912","113955","113962","114004","114010","114046",
+  "114053","114078","114095","114115","114284","114342","114434","114438","114453","114565",
+  "114575","114650","114708","114850","114867","114905","114926","114928","114930","114968",
+  "121026","121159","121167","121182","121184","121243","121255","121274","121341","121417",
+  "121422","121423","121636","121686","121755","121768","121802","121820","121822","121831",
+  "121885","121886","121903","121947","121948","121953","121954","121998","122025","122040",
+  "122072","122111","122198","122205","122228","122229","122234","122286","122313","122337",
+  "122359","122392","122409","122472","122482","122676","122719","122792","122807","122815",
+  "122837","122841","122880","122886","122893","122894","122941","122991","123029","123040",
+  "123119","123183","123272","123286","123340","123360","123410","123445","123447","123522",
+  "123550","123595","123611","123621","123657","123696","123747","123806","123864","123899",
+  "123962","123994","131174","131219","131291","131312","131441","131477","131528","131622",
+  "131635","131649","131675","131680","131813","131816","131983","132231","132241","132251",
+  "132425","132487","132689","132714","132736","132787","132839","132871","134163","134254",
+  "134266","134325","134437","134457","134461","134476","134487","134517","134544","134562",
+  "134610","134628","134737","134762","134774","134835","134851","134861","134883","134913",
+  "134914","134919","134929","135066","135080","135083","135142","135157","135237","135241",
+  "135245","135279","135282","135284","135328","135344","135393","135425","135497","135711",
+  "135724","135731","135785","135797","135915"
+]);
+
+// Prüft, ob das 6-stellige Passwort zur gewählten Klasse passt UND ein
+// tatsächlich ausgegebener Code ist:
+// Ziffer 1-2 = Jahrgang (z. B. "09"), Ziffer 3 = Buchstabe (a=1 ... e=5).
+// Bei 12/13 gibt es keinen Buchstaben, daher wird Ziffer 3 nicht geprüft.
+function validatePasswordAgainstKlasse(password, klasse){
+  if(klasse === "1") return true; // Testklasse: keine Formatprüfung, kein Whitelist-Zwang
+  if(!/^\d{6}$/.test(password)) return false;
+  if(!VALID_CODES.has(password)) return false;
+
+  const match = String(klasse).match(/^(\d+)([a-e])?$/i);
+  if(!match) return false;
+
+  const jahrgang = match[1];
+  const letter = match[2] ? match[2].toLowerCase() : null;
+
+  const expectedPrefix = jahrgang.padStart(2, "0");
+  if(password.slice(0,2) !== expectedPrefix) return false;
+
+  if(letter){
+    const letterDigit = String("abcde".indexOf(letter) + 1);
+    if(password[2] !== letterDigit) return false;
+  }
+
+  return true;
 }
 
 function docIdFromKey(key){
@@ -847,11 +1103,19 @@ document.getElementById("formIntro").addEventListener("submit", async e=>{
   submitBtn.disabled = true;
   submitBtn.textContent = "Wird geprüft…";
 
-  state.vorname = document.getElementById("vorname").value.trim();
-  state.nachname = document.getElementById("nachname").value.trim();
+  state.password = document.getElementById("password").value.trim();
   state.klasse = document.getElementById("klasse").value;
-  state.key = studentKey(state.vorname, state.nachname, state.klasse);
   state.jahrgang = parseJahrgang(state.klasse);
+
+  if(!validatePasswordAgainstKlasse(state.password, state.klasse)){
+    document.getElementById("passwordError").hidden = false;
+    submitBtn.disabled = false;
+    submitBtn.textContent = "Weiter";
+    return;
+  }
+  document.getElementById("passwordError").hidden = true;
+
+  state.key = studentKey(state.password);
 
   const existing = await getRecord(state.key);
 
@@ -863,8 +1127,7 @@ document.getElementById("formIntro").addEventListener("submit", async e=>{
   if(!existing){
     await saveRecord({
       key: state.key,
-      vorname: state.vorname,
-      nachname: state.nachname,
+      password: state.password,
       klasse: state.klasse,
       jahrgang: state.jahrgang,
       region: null,
@@ -1171,7 +1434,7 @@ function barChart(data){
 }
 
 function isTestRecord(r){
-  return !!r && r.key === TEST_KEY;
+  return !!r && r.klasse === "1";
 }
 
 function statusBadge(rec){
@@ -1388,8 +1651,8 @@ function renderParticipantsList(){
     if(statusFilter === "done" && !r.completed) return false;
     if(statusFilter === "pending" && r.completed) return false;
     if(search){
-      const fullName = (r.vorname+" "+r.nachname).toLowerCase();
-      if(!fullName.includes(search)) return false;
+      const code = String(r.password || r.key || "").toLowerCase();
+      if(!code.includes(search)) return false;
     }
     return true;
   });
@@ -1412,8 +1675,8 @@ function renderParticipantsList(){
       participantsHtml += `<div class="klasse-group"><h5>Klasse ${escapeHtml(klasse)}</h5>`;
       groups[jg][klasse].forEach(r => {
         participantsHtml += `<div class="student-row">
-          <span>${escapeHtml(r.vorname)} ${escapeHtml(r.nachname)} ${statusBadge(r)}${isTestRecord(r) ? ' <span class="status-badge">Test</span>' : ''}</span>
-          <button class="btn-danger" data-key="${escapeHtml(r.key)}" data-name="${escapeHtml(r.vorname+" "+r.nachname)}" type="button">Entfernen</button>
+          <span>Code ${escapeHtml(r.password || r.key)} ${statusBadge(r)}${isTestRecord(r) ? ' <span class="status-badge">Test</span>' : ''}</span>
+          <button class="btn-danger" data-key="${escapeHtml(r.key)}" data-name="${escapeHtml(r.password || r.key)}" type="button">Entfernen</button>
         </div>`;
       });
       participantsHtml += `</div>`;
@@ -1432,7 +1695,7 @@ function renderParticipantsList(){
 function openDeleteModal(key, name){
   pendingDelete = key;
   document.getElementById("confirmModalText").textContent =
-    `Dies entfernt die Stimme von ${name} unwiderruflich. Die Person kann anschließend erneut abstimmen. Nutze diese Funktion nur, wenn jemand fälschlicherweise für eine andere Person abgestimmt hat oder ein Fehler vorliegt.`;
+    `Dies entfernt die Stimme mit dem Code ${name} unwiderruflich. Der Code kann anschließend erneut zum Abstimmen genutzt werden. Nutze diese Funktion nur, wenn ein Fehler vorliegt oder jemand fälschlicherweise mit fremdem Code abgestimmt hat.`;
   document.getElementById("confirmModal").hidden = false;
   document.getElementById("confirmCancel").focus();
 }
@@ -1563,7 +1826,7 @@ function renderTurnoutTab(){
     const total = byKlasse[klasse].done + byKlasse[klasse].pending;
     listHtml += `<div class="klasse-group"><h5>Klasse ${escapeHtml(klasse)} — ${byKlasse[klasse].done} von ${total} abgestimmt</h5>`;
     records.filter(r => r.klasse === klasse).forEach(r => {
-      listHtml += `<div class="student-row"><span>${escapeHtml(r.vorname)} ${escapeHtml(r.nachname)}</span>${statusBadge(r)}</div>`;
+      listHtml += `<div class="student-row"><span>Code ${escapeHtml(r.password || r.key)}</span>${statusBadge(r)}</div>`;
     });
     listHtml += `</div>`;
   });
