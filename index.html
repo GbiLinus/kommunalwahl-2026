@@ -144,6 +144,21 @@
   }
   .row-select.selected{ font-weight:500; }
 
+  .mayor-info{
+    padding:0 0 1rem;
+    margin-bottom:.75rem;
+    border-bottom:1px solid var(--line);
+  }
+  .mayor-info p{ margin:0; color:var(--ink); }
+
+  .party-heading{
+    font-size:.8rem;
+    font-weight:600;
+    color:var(--ink-soft);
+    margin:1rem 0 .3rem;
+  }
+  .party-heading:first-child{ margin-top:0; }
+
   .council-row{
     display:flex;
     align-items:center;
@@ -388,9 +403,6 @@
             <option value="13">13</option>
           </select>
         </label>
-        <label>Geburtsdatum
-          <input type="date" id="geburtsdatum" required>
-        </label>
         <!-- Hinweis: Hier kann später bei Bedarf ein Passwort-Feld ergänzt werden -->
         <button type="submit" class="btn-primary">Weiter</button>
       </form>
@@ -545,17 +557,60 @@ const REGIONS = ["Bad Rothenfelde","Dissen","Hilter","Bad Iburg","Bad Laer","Gla
 function makeCandidates(){
   return {
     mayor: ["Kandidat/in A","Kandidat/in B","Kandidat/in C"],
-    council: ["Person 1","Person 2","Person 3","Person 4","Person 5","Person 6"]
+    council: ["Person 1","Person 2","Person 3","Person 4","Person 5","Person 6"].map(name => ({name, party:null}))
   };
 }
 
 const CANDIDATES = {};
 REGIONS.forEach(r => CANDIDATES[r] = makeCandidates());
 
+// Bad Rothenfelde: echte Kandidat:innen der Kommunalwahl 2026.
+// Nur ein/e Bürgermeisterkandidat/in -> Ja/Nein-Wahl statt Auswahlliste.
+CANDIDATES["Bad Rothenfelde"] = {
+  mayorMode: "yesno",
+  mayorInfo: { name: "Dirk Rauschkolb", details: "geb. 1968, Polizeibeamter" },
+  mayor: ["Ja", "Nein"],
+  council: [
+    {name:"Trojahn, Armin", party:"CDU"},
+    {name:"Hüggelmeyer, Marlies", party:"CDU"},
+    {name:"Trojahn, Malin", party:"CDU"},
+    {name:"Kuchenbecker, Alexander", party:"CDU"},
+    {name:"Kretschmann, Björn", party:"CDU"},
+    {name:"Bäumer, Justus", party:"CDU"},
+    {name:"Vater-Lippold, Norbert", party:"CDU"},
+    {name:"Dr. Förschner, Ingrid", party:"CDU"},
+    {name:"Vogt, Norbert", party:"CDU"},
+    {name:"Heinrichs-Senfft von Pilsach, Mirco", party:"CDU"},
+    {name:"Schneider, Christiane", party:"CDU"},
+    {name:"Wernemann, Andreas", party:"CDU"},
+    {name:"Bunselmeyer, Frank", party:"SPD"},
+    {name:"Temme, Onno", party:"SPD"},
+    {name:"Albers, Franz-Josef", party:"SPD"},
+    {name:"Schlegel, Stephan", party:"SPD"},
+    {name:"Besser, Leona Esther", party:"SPD"},
+    {name:"Bechar-Del Menico, Marie", party:"SPD"},
+    {name:"Meyer-Schöll, Manuela", party:"SPD"},
+    {name:"Brinkmann, Lya Marie", party:"GRÜNE"},
+    {name:"Steinbrügge, Uwe", party:"GRÜNE"},
+    {name:"Dr. Eichhorst, Thomas", party:"GRÜNE"},
+    {name:"Brinkmann, Jens", party:"GRÜNE"},
+    {name:"Kern, Kathrin", party:"GRÜNE"},
+    {name:"Großeknetter, Alexander", party:"GRÜNE"},
+    {name:"Schulte, Andreas", party:"GRÜNE"},
+    {name:"Girard, Heiko", party:"GRÜNE"},
+    {name:"Diakamp, Martin", party:"FDP"},
+    {name:"Pille, Tobias", party:"FDP"},
+    {name:"Meyer zu Theenhausen, Dirk", party:"FDP"},
+    {name:"Osterkamp, Jochen", party:"FDP"},
+    {name:"Eckhoff, Marius", party:"FDP"},
+    {name:"Martin, Daniel", party:"AfD Niedersachsen"}
+  ]
+};
+
 const STEPS = ["step-welcome","step-intro","step-region","step-mayor","step-council","step-confirm","step-rating","step-thanks"];
 
 const state = {
-  vorname:"", nachname:"", klasse:"", geburtsdatum:"",
+  vorname:"", nachname:"", klasse:"",
   // passwort: "", // Platz für ein später geplantes Passwort-Feld
   key:"", jahrgang:null,
   region:null,
@@ -603,15 +658,15 @@ function withTimeout(promise, ms){
   ]);
 }
 
-// Test-Profil: kann beliebig oft abstimmen und wird nie gespeichert,
-// taucht also nirgendwo im Ergebnis auf.
-const TEST_KEY = "p|1|1|2026-01-01";
+// Test-Profil: kann beliebig oft abstimmen, egal ob schon abgestimmt wurde,
+// und ist über "Wahlen selbst" jederzeit löschbar.
+const TEST_KEY = "p|1|1";
 function isTestProfile(){
   return state.key === TEST_KEY;
 }
 
-function studentKey(v,n,k,g){
-  return [v,n,k,g].map(s => String(s||"").trim().toLowerCase()).join("|");
+function studentKey(v,n,k){
+  return [v,n,k].map(s => String(s||"").trim().toLowerCase()).join("|");
 }
 
 function docIdFromKey(key){
@@ -723,8 +778,7 @@ document.getElementById("formIntro").addEventListener("submit", async e=>{
   state.vorname = document.getElementById("vorname").value.trim();
   state.nachname = document.getElementById("nachname").value.trim();
   state.klasse = document.getElementById("klasse").value;
-  state.geburtsdatum = document.getElementById("geburtsdatum").value;
-  state.key = studentKey(state.vorname, state.nachname, state.klasse, state.geburtsdatum);
+  state.key = studentKey(state.vorname, state.nachname, state.klasse);
   state.jahrgang = parseJahrgang(state.klasse);
 
   const existing = await getRecord(state.key);
@@ -804,14 +858,23 @@ function renderMayor(){
   list.innerHTML = "";
   state.mayorVote = null;
   document.getElementById("btnMayorNext").disabled = true;
-  CANDIDATES[state.region].mayor.forEach(name=>{
+  const data = CANDIDATES[state.region];
+
+  if(data.mayorMode === "yesno"){
+    const info = document.createElement("div");
+    info.className = "mayor-info";
+    info.innerHTML = `<p><strong>${escapeHtml(data.mayorInfo.name)}</strong><br>${escapeHtml(data.mayorInfo.details)}</p>`;
+    list.appendChild(info);
+  }
+
+  data.mayor.forEach(name=>{
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "row-select";
     btn.innerHTML = `<span>${name}</span><span class="box"></span>`;
     btn.addEventListener("click", ()=>{
       state.mayorVote = name;
-      [...list.children].forEach(c=>{
+      list.querySelectorAll(".row-select").forEach(c=>{
         c.classList.remove("selected");
         c.querySelector(".box").textContent = "";
       });
@@ -835,23 +898,40 @@ function renderCouncil(){
   state.councilVotes = {};
   const list = document.getElementById("councilList");
   list.innerHTML = "";
-  CANDIDATES[state.region].council.forEach(name=>{
-    state.councilVotes[name] = 0;
-    const row = document.createElement("div");
-    row.className = "council-row";
-    row.innerHTML = `<span class="name">${name}</span>`;
-    const boxesWrap = document.createElement("div");
-    boxesWrap.className = "council-boxes";
-    for(let i=1;i<=3;i++){
-      const b = document.createElement("button");
-      b.type = "button";
-      b.dataset.level = i;
-      b.setAttribute("aria-label", `${i}. Stimme für ${name}`);
-      b.addEventListener("click", ()=> setCouncilVote(name, i));
-      boxesWrap.appendChild(b);
+
+  const groups = {};
+  const order = [];
+  CANDIDATES[state.region].council.forEach(c=>{
+    const key = c.party || "";
+    if(!groups[key]){ groups[key] = []; order.push(key); }
+    groups[key].push(c.name);
+  });
+
+  order.forEach(party=>{
+    if(party){
+      const heading = document.createElement("p");
+      heading.className = "party-heading";
+      heading.textContent = party;
+      list.appendChild(heading);
     }
-    row.appendChild(boxesWrap);
-    list.appendChild(row);
+    groups[party].forEach(name=>{
+      state.councilVotes[name] = 0;
+      const row = document.createElement("div");
+      row.className = "council-row";
+      row.innerHTML = `<span class="name">${escapeHtml(name)}</span>`;
+      const boxesWrap = document.createElement("div");
+      boxesWrap.className = "council-boxes";
+      for(let i=1;i<=3;i++){
+        const b = document.createElement("button");
+        b.type = "button";
+        b.dataset.level = i;
+        b.setAttribute("aria-label", `${i}. Stimme für ${name}`);
+        b.addEventListener("click", ()=> setCouncilVote(name, i));
+        boxesWrap.appendChild(b);
+      }
+      row.appendChild(boxesWrap);
+      list.appendChild(row);
+    });
   });
   updateCouncilUI();
 }
@@ -1176,7 +1256,7 @@ function renderStatsTab(){
   const mayorData = Object.keys(mayorCounts).map(c => ({label:c, value: mayorCounts[c]}));
 
   const councilCounts = {};
-  (CANDIDATES[region] ? CANDIDATES[region].council : []).forEach(c => councilCounts[c]=0);
+  (CANDIDATES[region] ? CANDIDATES[region].council : []).forEach(c => councilCounts[c.name]=0);
   regionRecords.forEach(r => {
     Object.entries(r.councilVotes||{}).forEach(([name,v]) => { councilCounts[name] = (councilCounts[name]||0)+v; });
   });
@@ -1205,7 +1285,7 @@ function renderElectionsTab(){
     .map(([name,count]) => `<li>${escapeHtml(name)} <span class="count">${count}</span></li>`).join("");
 
   const councilCounts = {};
-  (CANDIDATES[region] ? CANDIDATES[region].council : []).forEach(c => councilCounts[c]=0);
+  (CANDIDATES[region] ? CANDIDATES[region].council : []).forEach(c => councilCounts[c.name]=0);
   completedRecords.forEach(r => { Object.entries(r.councilVotes||{}).forEach(([n,v]) => { councilCounts[n]=(councilCounts[n]||0)+v; }); });
   const councilList = Object.entries(councilCounts).sort((a,b)=>b[1]-a[1])
     .map(([name,count]) => `<li>${escapeHtml(name)} <span class="count">${count}</span></li>`).join("");
