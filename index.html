@@ -114,6 +114,8 @@
     border:none;
     cursor:pointer;
   }
+  .step-nav{ display:flex; gap:.75rem; margin-top:.5rem; }
+  .step-nav .btn-primary, .step-nav .btn-secondary{ flex:1; margin-top:0; width:auto; }
   .btn-primary:hover:not(:disabled){ background:var(--accent-dark); }
   .btn-primary:disabled{ background:var(--line); color:var(--ink-soft); cursor:not-allowed; }
 
@@ -150,6 +152,14 @@
     border-bottom:1px solid var(--line);
   }
   .mayor-info p{ margin:0; color:var(--ink); }
+  .mayor-info p.mayor-note{
+    border-left:3px solid var(--accent);
+    padding:.5rem .75rem;
+    margin-top:.75rem;
+    font-size:.85rem;
+    color:var(--ink-soft);
+    background:var(--paper);
+  }
 
   .party-heading{
     font-size:.8rem;
@@ -412,14 +422,20 @@
       <h2>Wähle deine Region</h2>
       <p>Für diese Gemeinde stimmst du im Folgenden ab.</p>
       <div class="region-list" id="regionList"></div>
-      <button class="btn-primary" id="btnRegionNext" disabled>Weiter</button>
+      <div class="step-nav">
+        <button class="btn-secondary" id="btnRegionBack" type="button">Zurück</button>
+        <button class="btn-primary" id="btnRegionNext" disabled>Weiter</button>
+      </div>
     </section>
 
     <section id="step-mayor" class="step" hidden>
       <h2>Bürgermeister/in</h2>
       <p><span id="mayorRegionName"></span> · du hast 1 Stimme.</p>
       <div class="candidate-list" id="mayorList"></div>
-      <button class="btn-primary" id="btnMayorNext" disabled>Weiter</button>
+      <div class="step-nav">
+        <button class="btn-secondary" id="btnMayorBack" type="button">Zurück</button>
+        <button class="btn-primary" id="btnMayorNext" disabled>Weiter</button>
+      </div>
     </section>
 
     <section id="step-council" class="step" hidden>
@@ -427,14 +443,20 @@
       <p><span id="councilRegionName"></span> · du hast 3 Stimmen und kannst einer Person bis zu 3 davon geben.</p>
       <p class="votes-remaining">Noch <strong id="remainingVotes">3</strong> von 3 Stimmen übrig</p>
       <div class="candidate-list" id="councilList"></div>
-      <button class="btn-primary" id="btnCouncilNext">Weiter</button>
+      <div class="step-nav">
+        <button class="btn-secondary" id="btnCouncilBack" type="button">Zurück</button>
+        <button class="btn-primary" id="btnCouncilNext">Weiter</button>
+      </div>
     </section>
 
     <section id="step-confirm" class="step" hidden>
       <h2>Zusammenfassung</h2>
       <p>Bitte überprüfe deine Auswahl. Nach dem Abschicken kann die Wahl nicht mehr geändert werden.</p>
       <div id="confirmSummary"></div>
-      <button class="btn-primary" id="btnConfirmSubmit" type="button">Wirklich abschicken</button>
+      <div class="step-nav">
+        <button class="btn-secondary" id="btnConfirmBack" type="button">Zurück</button>
+        <button class="btn-primary" id="btnConfirmSubmit" type="button">Wirklich abschicken</button>
+      </div>
     </section>
 
     <section id="step-rating" class="step" hidden>
@@ -604,6 +626,56 @@ CANDIDATES["Bad Rothenfelde"] = {
     {name:"Osterkamp, Jochen", party:"FDP"},
     {name:"Eckhoff, Marius", party:"FDP"},
     {name:"Martin, Daniel", party:"AfD Niedersachsen"}
+  ]
+};
+
+// Glandorf: echte Kandidat:innen der Kommunalwahl 2026.
+// Auch hier nur ein/e Bürgermeisterkandidat/in -> Ja/Nein-Wahl.
+CANDIDATES["Glandorf"] = {
+  mayorMode: "yesno",
+  mayorInfo: { name: "Torsten Dimek", details: "parteilos" },
+  mayor: ["Ja", "Nein"],
+  council: [
+    {name:"Laura Pöhler", party:"CDU"},
+    {name:"Niklas Dr. Ewerding", party:"CDU"},
+    {name:"Ralf Höwelhans", party:"CDU"},
+    {name:"Frank Kuhlmann", party:"CDU"},
+    {name:"Heinrich Jankrift", party:"CDU"},
+    {name:"Josef Ossege", party:"CDU"},
+    {name:"Andreas Auf der Landwehr", party:"CDU"},
+    {name:"Reinhard Lefken", party:"CDU"},
+    {name:"Andre Winterberg", party:"CDU"},
+    {name:"Birgit Wordtmann", party:"GRÜNE"},
+    {name:"Thorsten Timpe", party:"GRÜNE"},
+    {name:"Norbert Schulte-Frankenfeld", party:"GRÜNE"},
+    {name:"Mathias Schulte", party:"GRÜNE"},
+    {name:"Bastiaan Assmann", party:"GRÜNE"},
+    {name:"Martin Hippe", party:"FDP"},
+    {name:"Ralf Ossowitzki", party:"FDP"},
+    {name:"Michael Twyhues", party:"FDP"},
+    {name:"Wolfgang Hörning", party:"FDP"},
+    {name:"Michael Arendt", party:"FDP"},
+    {name:"Thomas Rieger", party:"FDP"},
+    {name:"Andrea Hassheider", party:"FDP"},
+    {name:"Sebastian Gottlöber", party:"FDP"},
+    {name:"Franziska Micke", party:"FDP"},
+    {name:"Theresa Nüvemann", party:"FDP"},
+    {name:"Karsten Jochmann", party:"FDP"},
+    {name:"Reinhold Hothnaier", party:"FDP"},
+    {name:"Johanna Hovestadt", party:"FDP"},
+    {name:"Claus Erpenbeck", party:"FDP"},
+    {name:"Sarah Bischof", party:"FDP"},
+    {name:"Sven Harwerth", party:"FDP"},
+    {name:"Bianca Heringhaus", party:"FDP"},
+    {name:"Patrick Klose", party:"FDP"},
+    {name:"Ann-Katrin Micke", party:"FDP"},
+    {name:"Bastian Wichmann", party:"FDP"},
+    {name:"Rob Mulckhuijse", party:"FDP"},
+    {name:"Antonius Soetebe", party:"FDP"},
+    {name:"Metin Ograk", party:"FDP"},
+    {name:"Ralf Wiebusch", party:"FDP"},
+    {name:"Matthias Keuter", party:"FDP"},
+    {name:"Christian Meckmann", party:"FDP"}
   ]
 };
 
@@ -833,6 +905,8 @@ function renderRegions(){
   });
 }
 
+document.getElementById("btnRegionBack").addEventListener("click", ()=> goToStep(1));
+
 document.getElementById("btnRegionNext").addEventListener("click", async ()=>{
   const btn = document.getElementById("btnRegionNext");
   btn.disabled = true;
@@ -863,7 +937,10 @@ function renderMayor(){
   if(data.mayorMode === "yesno"){
     const info = document.createElement("div");
     info.className = "mayor-info";
-    info.innerHTML = `<p><strong>${escapeHtml(data.mayorInfo.name)}</strong><br>${escapeHtml(data.mayorInfo.details)}</p>`;
+    info.innerHTML = `
+      <p><strong>${escapeHtml(data.mayorInfo.name)}</strong><br>${escapeHtml(data.mayorInfo.details)}</p>
+      <p class="mayor-note">Hinweis: Für dieses Amt kandidiert nur eine Person. Deshalb wird nicht zwischen mehreren Kandidat:innen gewählt, sondern mit Ja oder Nein abgestimmt.</p>
+    `;
     list.appendChild(info);
   }
 
@@ -886,6 +963,7 @@ function renderMayor(){
   });
 }
 
+document.getElementById("btnMayorBack").addEventListener("click", ()=> goToStep(2));
 document.getElementById("btnMayorNext").addEventListener("click", ()=> goToStep(4));
 
 // --- Step 4: Gemeinderat (3 Stimmen, bis zu 3 pro Person) ---
@@ -978,11 +1056,13 @@ function renderConfirmSummary(){
   `;
 }
 
+document.getElementById("btnCouncilBack").addEventListener("click", ()=> goToStep(3));
 document.getElementById("btnCouncilNext").addEventListener("click", ()=>{
   renderConfirmSummary();
   goToStep(5);
 });
 
+document.getElementById("btnConfirmBack").addEventListener("click", ()=> goToStep(4));
 document.getElementById("btnConfirmSubmit").addEventListener("click", async ()=>{
   const btn = document.getElementById("btnConfirmSubmit");
   btn.disabled = true;
