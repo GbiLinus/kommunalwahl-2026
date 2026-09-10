@@ -371,7 +371,7 @@
         <li>Auswahl bestätigen</li>
         <li>Website bewerten</li>
       </ol>
-      <p>Du kannst nur einmal abstimmen. Nach dem Bestätigen deiner Wahl lässt sie sich nicht mehr ändern.</p>
+      <p>Du kannst nur einmal abstimmen. Nach dem Bestätigen deiner Wahl lässt sie sich nicht mehr ändern. Deine Stimme zählt bereits ab diesem Bestätigen – die Bewertung danach ist freiwillig. Ganz am Ende siehst du eine Bestätigung ("Danke fürs Wählen!") – dann ist alles fertig.</p>
       <button class="btn-primary" id="btnWelcomeNext" type="button">Los geht's</button>
     </section>
 
@@ -450,6 +450,7 @@
       <h2>Zusammenfassung</h2>
       <p>Bitte überprüfe deine Auswahl. Nach dem Abschicken kann die Wahl nicht mehr geändert werden.</p>
       <div id="confirmSummary"></div>
+      <p id="confirmError" class="field-error" hidden>Verbindungsproblem – deine Wahl wurde nicht gespeichert. Bitte prüfe deine Internetverbindung und versuche es erneut.</p>
       <div class="step-nav">
         <button class="btn-secondary" id="btnConfirmBack" type="button">Zurück</button>
         <button class="btn-primary" id="btnConfirmSubmit" type="button">Wirklich abschicken</button>
@@ -731,13 +732,8 @@ CANDIDATES["Hilter"] = {
 // Bad Iburg: echte Gemeinderat-Kandidat:innen der Kommunalwahl 2026.
 // Bürgermeister/in steht noch nicht fest -> mayor bleibt vorerst der
 // generische Platzhalter aus makeCandidates().
-// Bad Iburg: Bürgermeister vorläufig eingetragen, NICHT offiziell bestätigt.
-// Indizien: Amtsinhaber Große-Albers tritt erneut parteilos an, SPD und
-// Grüne stellen extra keinen eigenen Kandidaten auf. Ob auch CDU/FDP/AfD
-// verzichtet haben, ist unklar -> unbedingt noch offiziell gegenprüfen.
-CANDIDATES["Bad Iburg"].mayorMode = "yesno";
-CANDIDATES["Bad Iburg"].mayorInfo = { name: "Daniel Große-Albers", details: "parteilos, amtierender Bürgermeister" };
-CANDIDATES["Bad Iburg"].mayor = ["Ja", "Nein"];
+// Bad Iburg: Bürgermeister bestätigt - zwei Kandidaten, normale Auswahl (kein Ja/Nein).
+CANDIDATES["Bad Iburg"].mayor = ["Daniel Große-Albers", "Jens Beeck"];
 CANDIDATES["Bad Iburg"].council = [
   {name:"Jochen Wiek", party:"SPD"},
   {name:"Hannes Geesen", party:"SPD"},
@@ -853,12 +849,13 @@ const STEPS = ["step-welcome","step-intro","step-region","step-mayor","step-coun
 
 const state = {
   password:"", klasse:"",
-  // passwort: "", // Platz für ein später geplantes Passwort-Feld
   key:"", jahrgang:null,
   region:null,
   mayorVote:null,
   councilVotes:{},
-  rating:0
+  rating:0,
+  startedAt:null,
+  completedAt:null
 };
 
 let stepIndex = 0;
@@ -898,6 +895,22 @@ function withTimeout(promise, ms){
     promise,
     new Promise((_, reject) => setTimeout(()=>reject(new Error("Zeitüberschreitung")), ms))
   ]);
+}
+
+// Wiederholt eine Firestore-Anfrage bei kurzen Netzwerkaussetzern (kommen
+// bei vielen gleichzeitigen Zugriffen, z. B. im Schul-WLAN, öfter vor)
+// statt beim ersten Fehler direkt aufzugeben.
+async function withRetry(fn, attempts = 3){
+  let lastErr;
+  for(let i = 0; i < attempts; i++){
+    try{
+      return await withTimeout(fn(), 6000);
+    }catch(e){
+      lastErr = e;
+      if(i < attempts - 1) await new Promise(r => setTimeout(r, 500 * (i + 1)));
+    }
+  }
+  throw lastErr;
 }
 
 // Test-Profil: Klasse "1" ist als Testklasse reserviert. Jeder Code
@@ -963,7 +976,7 @@ const VALID_CODES = new Set([
   "123550","123595","123611","123621","123657","123696","123747","123806","123864","123899",
   "123962","123994","131174","131219","131291","131312","131441","131477","131528","131622",
   "131635","131649","131675","131680","131813","131816","131983","132231","132241","132251",
-  "132425","132487","132689","132714","132736","132787","132839","132871","134163","134254",
+  "132425","132487","132645","132689","132714","132736","132787","132839","132871","134163","134254",
   "134266","134325","134437","134457","134461","134476","134487","134517","134544","134562",
   "134610","134628","134737","134762","134774","134835","134851","134861","134883","134913",
   "134914","134919","134929","135066","135080","135083","135142","135157","135237","135241",
@@ -1012,10 +1025,32 @@ function parseJahrgang(klasse){
 // Klasse 12-13: nur die Zahl, kein Buchstabe (z. B. "12").
 // (Klasse wird jetzt über ein Auswahlfeld erfasst, daher keine Formatprüfung mehr nötig)
 
+// Baut immer ein vollständiges Abbild aus dem aktuellen Zustand statt
+// vorherige Firestore-Daten zu lesen und zu verändern. Dadurch geht bei
+// einem fehlgeschlagenen Zwischenschritt (z. B. Netzwerkaussetzer bei
+// vielen gleichzeitigen Zugriffen) nichts verloren - der nächste Schritt
+// schreibt einfach den kompletten aktuellen Stand erneut.
+function buildRecord(completed){
+  if(completed && !state.completedAt) state.completedAt = new Date().toISOString();
+  return {
+    key: state.key,
+    password: state.password,
+    klasse: state.klasse,
+    jahrgang: state.jahrgang,
+    region: state.region,
+    mayorVote: state.mayorVote,
+    councilVotes: Object.assign({}, state.councilVotes),
+    rating: state.rating || null,
+    completed: completed,
+    startedAt: state.startedAt,
+    completedAt: completed ? state.completedAt : null
+  };
+}
+
 async function getRecord(key){
   if(!FIREBASE_READY) return null;
   try{
-    const snap = await withTimeout(db.collection(VOTES_COLLECTION).doc(docIdFromKey(key)).get(), 8000);
+    const snap = await withRetry(() => db.collection(VOTES_COLLECTION).doc(docIdFromKey(key)).get());
     return snap.exists ? snap.data() : null;
   }catch(e){
     console.error("Laden fehlgeschlagen", e);
@@ -1026,7 +1061,7 @@ async function getRecord(key){
 async function saveRecord(record){
   if(!FIREBASE_READY) return false;
   try{
-    await withTimeout(db.collection(VOTES_COLLECTION).doc(docIdFromKey(record.key)).set(record), 8000);
+    await withRetry(() => db.collection(VOTES_COLLECTION).doc(docIdFromKey(record.key)).set(record));
     return true;
   }catch(e){
     console.error("Speichern fehlgeschlagen", e);
@@ -1037,7 +1072,7 @@ async function saveRecord(record){
 async function deleteRecord(key){
   if(!FIREBASE_READY) return false;
   try{
-    await withTimeout(db.collection(VOTES_COLLECTION).doc(docIdFromKey(key)).delete(), 8000);
+    await withRetry(() => db.collection(VOTES_COLLECTION).doc(docIdFromKey(key)).delete());
     return true;
   }catch(e){
     console.error("Löschen fehlgeschlagen", e);
@@ -1048,7 +1083,7 @@ async function deleteRecord(key){
 async function loadAllRecords(){
   if(!FIREBASE_READY) return [];
   try{
-    const snap = await withTimeout(db.collection(VOTES_COLLECTION).get(), 8000);
+    const snap = await withRetry(() => db.collection(VOTES_COLLECTION).get());
     return snap.docs.map(d => d.data());
   }catch(e){
     console.error("Laden fehlgeschlagen", e);
@@ -1124,25 +1159,30 @@ document.getElementById("formIntro").addEventListener("submit", async e=>{
     return;
   }
 
-  if(!existing){
-    await saveRecord({
-      key: state.key,
-      password: state.password,
-      klasse: state.klasse,
-      jahrgang: state.jahrgang,
-      region: null,
-      mayorVote: null,
-      councilVotes: {},
-      rating: null,
-      completed: false,
-      startedAt: new Date().toISOString()
-    });
+  state.startedAt = (existing && existing.startedAt) ? existing.startedAt : new Date().toISOString();
+
+  if(existing && !isTestProfile()){
+    state.region = existing.region || null;
+    state.mayorVote = existing.mayorVote || null;
+    state.councilVotes = existing.councilVotes ? Object.assign({}, existing.councilVotes) : {};
+    state.rating = existing.rating || 0;
   }
+
+  await saveRecord(buildRecord(false));
 
   submitBtn.disabled = false;
   submitBtn.textContent = "Weiter";
-  renderRegions();
-  goToStep(2);
+
+  if(state.region){
+    document.getElementById("mayorRegionName").textContent = state.region;
+    document.getElementById("councilRegionName").textContent = state.region;
+    renderMayor();
+    renderCouncil();
+    goToStep(state.mayorVote ? 4 : 3);
+  } else {
+    renderRegions();
+    goToStep(2);
+  }
 });
 
 // --- Step 2: Region ---
@@ -1155,6 +1195,10 @@ function renderRegions(){
     btn.className = "row-select";
     btn.innerHTML = `<span>${region}</span><span class="box"></span>`;
     btn.addEventListener("click", ()=>{
+      if(state.region !== region){
+        state.mayorVote = null;
+        state.councilVotes = {};
+      }
       state.region = region;
       [...list.children].forEach(c=>{
         c.classList.remove("selected");
@@ -1181,8 +1225,7 @@ document.getElementById("btnRegionNext").addEventListener("click", async ()=>{
   renderMayor();
   renderCouncil();
 
-  const rec = await getRecord(state.key);
-  if(rec){ rec.region = state.region; await saveRecord(rec); }
+  await saveRecord(buildRecord(false));
 
   btn.disabled = false;
   btn.textContent = originalLabel;
@@ -1193,8 +1236,7 @@ document.getElementById("btnRegionNext").addEventListener("click", async ()=>{
 function renderMayor(){
   const list = document.getElementById("mayorList");
   list.innerHTML = "";
-  state.mayorVote = null;
-  document.getElementById("btnMayorNext").disabled = true;
+  document.getElementById("btnMayorNext").disabled = !state.mayorVote;
   const data = CANDIDATES[state.region];
 
   if(data.mayorMode === "yesno"){
@@ -1210,8 +1252,9 @@ function renderMayor(){
   data.mayor.forEach(name=>{
     const btn = document.createElement("button");
     btn.type = "button";
-    btn.className = "row-select";
-    btn.innerHTML = `<span>${name}</span><span class="box"></span>`;
+    const isSelected = name === state.mayorVote;
+    btn.className = "row-select" + (isSelected ? " selected" : "");
+    btn.innerHTML = `<span>${name}</span><span class="box">${isSelected ? "✕" : ""}</span>`;
     btn.addEventListener("click", ()=>{
       state.mayorVote = name;
       list.querySelectorAll(".row-select").forEach(c=>{
@@ -1236,13 +1279,14 @@ function remainingCouncilVotes(){
 }
 
 function renderCouncil(){
-  state.councilVotes = {};
+  if(!state.councilVotes) state.councilVotes = {};
   const list = document.getElementById("councilList");
   list.innerHTML = "";
 
   const groups = {};
   const order = [];
   CANDIDATES[state.region].council.forEach(c=>{
+    if(!(c.name in state.councilVotes)) state.councilVotes[c.name] = 0;
     const key = c.party || "";
     if(!groups[key]){ groups[key] = []; order.push(key); }
     groups[key].push(c.name);
@@ -1330,15 +1374,16 @@ document.getElementById("btnConfirmSubmit").addEventListener("click", async ()=>
   const btn = document.getElementById("btnConfirmSubmit");
   btn.disabled = true;
   btn.textContent = "Wird gespeichert…";
+  document.getElementById("confirmError").hidden = true;
 
-  const rec = await getRecord(state.key);
-  if(rec){
-    rec.region = state.region;
-    rec.mayorVote = state.mayorVote;
-    rec.councilVotes = Object.assign({}, state.councilVotes);
-    rec.completed = true;
-    rec.completedAt = new Date().toISOString();
-    await saveRecord(rec);
+  const ok = await saveRecord(buildRecord(true));
+
+  if(!ok){
+    state.completedAt = null; // erneuter Versuch soll einen neuen Zeitstempel setzen dürfen
+    btn.disabled = false;
+    btn.textContent = "Wirklich abschicken";
+    document.getElementById("confirmError").hidden = false;
+    return;
   }
 
   btn.disabled = false;
@@ -1373,11 +1418,7 @@ document.getElementById("btnRatingNext").addEventListener("click", async ()=>{
   btn.disabled = true;
   btn.textContent = "Wird gespeichert…";
 
-  const rec = await getRecord(state.key);
-  if(rec){
-    rec.rating = state.rating;
-    await saveRecord(rec);
-  }
+  await saveRecord(buildRecord(true));
 
   btn.disabled = false;
   btn.textContent = "Weiter";
@@ -1801,6 +1842,21 @@ function downloadFinalPdf(){
 }
 
 // --- Tab: Jahrgänge im Detail ---
+function computeRatingsByJahrgang(){
+  const sums = {};
+  [8,9,10,11,12,13].forEach(j => sums[j] = {sum:0, count:0});
+  allRecords.forEach(r => {
+    if(isTestRecord(r) || !r.completed || !r.rating) return;
+    if(!sums[r.jahrgang]) return;
+    sums[r.jahrgang].sum += r.rating;
+    sums[r.jahrgang].count += 1;
+  });
+  return [8,9,10,11,12,13].map(j => ({
+    label: "Jahrgang "+j+(sums[j].count ? " ("+sums[j].count+")" : ""),
+    value: sums[j].count ? Math.round((sums[j].sum/sums[j].count)*10)/10 : 0
+  }));
+}
+
 function renderTurnoutTab(){
   const jgFilter = document.getElementById("turnoutJahrgang").value || "all";
   const out = document.getElementById("turnoutOutput");
@@ -1820,6 +1876,7 @@ function renderTurnoutTab(){
     if(r.completed) byKlasse[r.klasse].done++; else byKlasse[r.klasse].pending++;
   });
   const klasseBarData = Object.keys(byKlasse).sort().map(k => ({label:"Klasse "+k, value: byKlasse[k].done}));
+  const ratingData = computeRatingsByJahrgang();
 
   let listHtml = "";
   Object.keys(byKlasse).sort().forEach(klasse => {
@@ -1836,6 +1893,7 @@ function renderTurnoutTab(){
     <p>${records.length} Anmeldungen insgesamt, davon ${totalDone} abgeschlossen.</p>
     <div class="chart-block"><h3>Abgestimmt vs. nicht abgeschlossen</h3>${pieChart(chartData)}</div>
     <div class="chart-block"><h3>Abgeschlossen je Klasse</h3>${barChart(klasseBarData)}</div>
+    <div class="chart-block"><h3>Durchschnittliche Website-Bewertung je Jahrgang (1–5 Sterne)</h3>${barChart(ratingData)}</div>
     <h3>Übersicht</h3>
     ${listHtml}
   `;
