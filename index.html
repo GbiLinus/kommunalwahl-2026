@@ -169,6 +169,15 @@
   }
   .party-heading:first-child{ margin-top:0; }
 
+  .party-vote-row{
+    background:var(--paper);
+    border-bottom-color:var(--ink);
+    font-weight:500;
+    margin-bottom:.3rem;
+  }
+  .party-vote-row .box{ color:var(--accent); }
+  .party-vote-row.selected{ color:var(--accent-dark); }
+
   .council-row{
     display:flex;
     align-items:center;
@@ -487,6 +496,7 @@
       <button class="admin-tab" data-tab="elections" type="button">Wahlen selbst</button>
       <button class="admin-tab" data-tab="final" type="button">Finale Auswertung</button>
       <button class="admin-tab" data-tab="turnout" type="button">Jahrgänge im Detail</button>
+      <button class="admin-tab" data-tab="rating" type="button">Bewertung</button>
       <button class="admin-tab" id="btnBackToPublic" type="button" style="margin-top:1.5rem; border-top:1px solid var(--line);">Zurück zur Wahlseite</button>
     </nav>
 
@@ -546,6 +556,14 @@
           <button class="btn-secondary" id="turnoutRefresh" type="button">Aktualisieren</button>
         </div>
         <div id="turnoutOutput"></div>
+      </section>
+
+      <section id="tab-rating" class="admin-panel" hidden>
+        <h2>Bewertung</h2>
+        <div class="filter-row">
+          <button class="btn-secondary" id="ratingRefresh" type="button">Aktualisieren</button>
+        </div>
+        <div id="ratingOutput"></div>
       </section>
     </div>
   </div>
@@ -853,6 +871,7 @@ const state = {
   region:null,
   mayorVote:null,
   councilVotes:{},
+  councilPartyVote:null,
   rating:0,
   startedAt:null,
   completedAt:null
@@ -1040,6 +1059,7 @@ function buildRecord(completed){
     region: state.region,
     mayorVote: state.mayorVote,
     councilVotes: Object.assign({}, state.councilVotes),
+    councilPartyVote: state.councilPartyVote || null,
     rating: state.rating || null,
     completed: completed,
     startedAt: state.startedAt,
@@ -1165,6 +1185,7 @@ document.getElementById("formIntro").addEventListener("submit", async e=>{
     state.region = existing.region || null;
     state.mayorVote = existing.mayorVote || null;
     state.councilVotes = existing.councilVotes ? Object.assign({}, existing.councilVotes) : {};
+    state.councilPartyVote = existing.councilPartyVote || null;
     state.rating = existing.rating || 0;
   }
 
@@ -1198,6 +1219,7 @@ function renderRegions(){
       if(state.region !== region){
         state.mayorVote = null;
         state.councilVotes = {};
+        state.councilPartyVote = null;
       }
       state.region = region;
       [...list.children].forEach(c=>{
@@ -1272,8 +1294,9 @@ function renderMayor(){
 document.getElementById("btnMayorBack").addEventListener("click", ()=> goToStep(2));
 document.getElementById("btnMayorNext").addEventListener("click", ()=> goToStep(4));
 
-// --- Step 4: Gemeinderat (3 Stimmen, bis zu 3 pro Person) ---
+// --- Step 4: Gemeinderat (3 Stimmen, bis zu 3 pro Person, oder ganze Liste) ---
 function remainingCouncilVotes(){
+  if(state.councilPartyVote) return 0;
   const used = Object.values(state.councilVotes).reduce((a,b)=>a+b,0);
   return 3 - used;
 }
@@ -1298,9 +1321,16 @@ function renderCouncil(){
       heading.className = "party-heading";
       heading.textContent = party;
       list.appendChild(heading);
+
+      const isPartySelected = state.councilPartyVote === party;
+      const partyBtn = document.createElement("button");
+      partyBtn.type = "button";
+      partyBtn.className = "row-select party-vote-row" + (isPartySelected ? " selected" : "");
+      partyBtn.innerHTML = `<span>Ganze Liste "${escapeHtml(party)}" wählen (alle 3 Stimmen)</span><span class="box">${isPartySelected ? "✕" : ""}</span>`;
+      partyBtn.addEventListener("click", ()=> setPartyVote(party));
+      list.appendChild(partyBtn);
     }
     groups[party].forEach(name=>{
-      state.councilVotes[name] = 0;
       const row = document.createElement("div");
       row.className = "council-row";
       row.innerHTML = `<span class="name">${escapeHtml(name)}</span>`;
@@ -1321,7 +1351,18 @@ function renderCouncil(){
   updateCouncilUI();
 }
 
+function setPartyVote(party){
+  if(state.councilPartyVote === party){
+    state.councilPartyVote = null; // erneutes Antippen hebt die Listenwahl wieder auf
+  } else {
+    state.councilPartyVote = party;
+    Object.keys(state.councilVotes).forEach(name => state.councilVotes[name] = 0);
+  }
+  renderCouncil();
+}
+
 function setCouncilVote(name, level){
+  state.councilPartyVote = null; // eine Einzelstimme hebt eine Listenwahl auf
   const current = state.councilVotes[name];
   if(level === current){
     state.councilVotes[name] = level-1;
@@ -1351,10 +1392,15 @@ function updateCouncilUI(){
 }
 
 function renderConfirmSummary(){
-  const councilEntries = Object.entries(state.councilVotes).filter(([,v]) => v > 0);
-  const councilHtml = councilEntries.length
-    ? councilEntries.map(([name,v]) => `<li>${escapeHtml(name)} <span class="count">${v} ${v===1?'Stimme':'Stimmen'}</span></li>`).join("")
-    : `<li>Keine Stimme vergeben</li>`;
+  let councilHtml;
+  if(state.councilPartyVote){
+    councilHtml = `<li>Ganze Liste "${escapeHtml(state.councilPartyVote)}" <span class="count">3 Stimmen</span></li>`;
+  } else {
+    const councilEntries = Object.entries(state.councilVotes).filter(([,v]) => v > 0);
+    councilHtml = councilEntries.length
+      ? councilEntries.map(([name,v]) => `<li>${escapeHtml(name)} <span class="count">${v} ${v===1?'Stimme':'Stimmen'}</span></li>`).join("")
+      : `<li>Keine Stimme vergeben</li>`;
+  }
   document.getElementById("confirmSummary").innerHTML = `
     <p><strong>Region:</strong> ${escapeHtml(state.region||"–")}</p>
     <p><strong>Bürgermeister/in:</strong> ${state.mayorVote ? escapeHtml(state.mayorVote) : "keine Angabe"}</p>
@@ -1478,6 +1524,25 @@ function isTestRecord(r){
   return !!r && r.klasse === "1";
 }
 
+// Fasst Einzelstimmen für Kandidat:innen einer Partei UND direkte
+// Listenstimmen (ganze Liste gewählt) zu einem Gesamtergebnis je Partei zusammen.
+function computePartyTotals(records, region){
+  const partyOf = {};
+  (CANDIDATES[region] ? CANDIDATES[region].council : []).forEach(c => { if(c.party) partyOf[c.name] = c.party; });
+
+  const totals = {};
+  records.forEach(r => {
+    Object.entries(r.councilVotes||{}).forEach(([name,v]) => {
+      const p = partyOf[name];
+      if(p && v > 0) totals[p] = (totals[p]||0) + v;
+    });
+    if(r.councilPartyVote){
+      totals[r.councilPartyVote] = (totals[r.councilPartyVote]||0) + 3;
+    }
+  });
+  return totals;
+}
+
 function statusBadge(rec){
   return rec.completed
     ? `<span class="status-badge done">Abgestimmt</span>`
@@ -1551,6 +1616,7 @@ async function initAdmin(){
   renderElectionsTab();
   renderFinalTab();
   renderTurnoutTab();
+  renderRatingTab();
 }
 
 const ABANDONED_AFTER_MS = 30 * 60 * 1000; // 30 Minuten
@@ -1597,6 +1663,7 @@ function setupAdminFilters(){
 
   document.getElementById("turnoutJahrgang").addEventListener("change", renderTurnoutTab);
   document.getElementById("turnoutRefresh").addEventListener("click", async ()=>{ await refreshRecords(); renderTurnoutTab(); });
+  document.getElementById("ratingRefresh").addEventListener("click", async ()=>{ await refreshRecords(); renderRatingTab(); });
 
   document.getElementById("btnBackToPublic").addEventListener("click", showPublicView);
   document.getElementById("downloadPdfBtn").addEventListener("click", downloadFinalPdf);
@@ -1646,10 +1713,17 @@ function renderStatsTab(){
   });
   const councilData = Object.keys(councilCounts).map(c => ({label:c, value: councilCounts[c]})).sort((a,b)=>b.value-a.value);
 
+  const partyTotals = computePartyTotals(regionRecords, region);
+  const partyData = Object.keys(partyTotals).map(p => ({label:p, value: partyTotals[p]})).sort((a,b)=>b.value-a.value);
+  const partyChartBlock = partyData.length
+    ? `<div class="chart-block"><h3>Gemeinderat-Ergebnis nach Partei (Einzel- + Listenstimmen)</h3>${pieChart(partyData)}</div>`
+    : "";
+
   out.innerHTML = `
     <p>${regionRecords.length} abgeschlossene Stimmen in ${escapeHtml(region)} im gewählten Filter.</p>
     <div class="chart-block"><h3>Bürgermeister/in-Ergebnis</h3>${pieChart(mayorData)}</div>
-    <div class="chart-block"><h3>Gemeinderat-Ergebnis</h3>${barChart(councilData)}</div>
+    <div class="chart-block"><h3>Gemeinderat-Ergebnis (Einzelstimmen)</h3>${barChart(councilData)}</div>
+    ${partyChartBlock}
   `;
 }
 
@@ -1674,11 +1748,19 @@ function renderElectionsTab(){
   const councilList = Object.entries(councilCounts).sort((a,b)=>b[1]-a[1])
     .map(([name,count]) => `<li>${escapeHtml(name)} <span class="count">${count}</span></li>`).join("");
 
+  const partyTotals = computePartyTotals(completedRecords, region);
+  const partyList = Object.entries(partyTotals).sort((a,b)=>b[1]-a[1])
+    .map(([party,count]) => `<li>${escapeHtml(party)} <span class="count">${count}</span></li>`).join("");
+  const partyBlock = partyList
+    ? `<h3>Ergebnis Gemeinderat nach Partei (Einzel- + Listenstimmen)</h3><ol class="result-list">${partyList}</ol>`
+    : "";
+
   out.innerHTML = `
     <h3>Ergebnis Bürgermeister/in</h3>
     <ol class="result-list">${mayorList || "<li>Noch keine Stimmen.</li>"}</ol>
-    <h3>Ergebnis Gemeinderat</h3>
+    <h3>Ergebnis Gemeinderat (Einzelstimmen)</h3>
     <ol class="result-list">${councilList || "<li>Noch keine Stimmen.</li>"}</ol>
+    ${partyBlock}
   `;
 
   renderParticipantsList();
@@ -1755,6 +1837,7 @@ async function confirmDelete(){
   renderStatsTab();
   renderFinalTab();
   renderTurnoutTab();
+  renderRatingTab();
 }
 
 // --- Tab: Finale Auswertung ---
@@ -1777,7 +1860,11 @@ function renderFinalTab(){
     recs.forEach(r => Object.entries(r.councilVotes||{}).forEach(([n,v]) => { councilCounts[n]=(councilCounts[n]||0)+v; }));
     const councilTop = Object.entries(councilCounts).sort((a,b)=>b[1]-a[1])[0];
 
-    html += `<p><strong>${region}:</strong> Bürgermeister/in-Sieger/in ${mayorWinner ? escapeHtml(mayorWinner[0])+" ("+mayorWinner[1]+" Stimmen)" : "–"}. Meiste Ratsstimmen: ${councilTop ? escapeHtml(councilTop[0])+" ("+councilTop[1]+")" : "–"}.</p>`;
+    const partyTotals = computePartyTotals(recs, region);
+    const partyTop = Object.entries(partyTotals).sort((a,b)=>b[1]-a[1])[0];
+    const partyText = partyTop ? ` Stärkste Partei: ${escapeHtml(partyTop[0])} (${partyTop[1]} Stimmen).` : "";
+
+    html += `<p><strong>${region}:</strong> Bürgermeister/in-Sieger/in ${mayorWinner ? escapeHtml(mayorWinner[0])+" ("+mayorWinner[1]+" Stimmen)" : "–"}. Meiste Ratsstimmen: ${councilTop ? escapeHtml(councilTop[0])+" ("+councilTop[1]+")" : "–"}.${partyText}</p>`;
   });
 
   out.innerHTML = html;
@@ -1805,8 +1892,11 @@ function buildFinalSummaryLines(){
     const councilCounts = {};
     recs.forEach(r => Object.entries(r.councilVotes||{}).forEach(([n,v]) => { councilCounts[n]=(councilCounts[n]||0)+v; }));
     const councilTop = Object.entries(councilCounts).sort((a,b)=>b[1]-a[1])[0];
+    const partyTotals = computePartyTotals(recs, region);
+    const partyTop = Object.entries(partyTotals).sort((a,b)=>b[1]-a[1])[0];
     lines.push("  Buergermeister/in: " + (mayorWinner ? mayorWinner[0]+" - "+mayorWinner[1]+" Stimmen" : "keine Angabe"));
     lines.push("  Meiste Ratsstimmen: " + (councilTop ? councilTop[0]+" - "+councilTop[1] : "keine Angabe"));
+    if(partyTop) lines.push("  Staerkste Partei: " + partyTop[0]+" - "+partyTop[1]+" Stimmen");
     lines.push("");
   });
   return lines;
@@ -1876,7 +1966,6 @@ function renderTurnoutTab(){
     if(r.completed) byKlasse[r.klasse].done++; else byKlasse[r.klasse].pending++;
   });
   const klasseBarData = Object.keys(byKlasse).sort().map(k => ({label:"Klasse "+k, value: byKlasse[k].done}));
-  const ratingData = computeRatingsByJahrgang();
 
   let listHtml = "";
   Object.keys(byKlasse).sort().forEach(klasse => {
@@ -1893,9 +1982,34 @@ function renderTurnoutTab(){
     <p>${records.length} Anmeldungen insgesamt, davon ${totalDone} abgeschlossen.</p>
     <div class="chart-block"><h3>Abgestimmt vs. nicht abgeschlossen</h3>${pieChart(chartData)}</div>
     <div class="chart-block"><h3>Abgeschlossen je Klasse</h3>${barChart(klasseBarData)}</div>
-    <div class="chart-block"><h3>Durchschnittliche Website-Bewertung je Jahrgang (1–5 Sterne)</h3>${barChart(ratingData)}</div>
     <h3>Übersicht</h3>
     ${listHtml}
+  `;
+}
+
+// --- Tab: Bewertung ---
+function renderRatingTab(){
+  const out = document.getElementById("ratingOutput");
+  const rated = allRecords.filter(r => !isTestRecord(r) && r.completed && r.rating);
+
+  if(!rated.length){
+    out.innerHTML = "<p>Es liegen noch keine Bewertungen vor.</p>";
+    return;
+  }
+
+  const sum = rated.reduce((s,r) => s + r.rating, 0);
+  const avg = Math.round((sum / rated.length) * 10) / 10;
+
+  const distCounts = {1:0,2:0,3:0,4:0,5:0};
+  rated.forEach(r => { distCounts[r.rating] = (distCounts[r.rating]||0) + 1; });
+  const distData = [1,2,3,4,5].map(n => ({label: n+" Stern"+(n===1?"":"e"), value: distCounts[n]}));
+
+  const jahrgangData = computeRatingsByJahrgang();
+
+  out.innerHTML = `
+    <p><strong>${avg} von 5 Sternen</strong> im Durchschnitt, basierend auf ${rated.length} Bewertung${rated.length===1?"":"en"}.</p>
+    <div class="chart-block"><h3>Verteilung der Sterne</h3>${barChart(distData)}</div>
+    <div class="chart-block"><h3>Durchschnitt je Jahrgang</h3>${barChart(jahrgangData)}</div>
   `;
 }
 
