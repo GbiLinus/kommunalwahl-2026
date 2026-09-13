@@ -523,6 +523,7 @@
         <h2>Wahlen selbst</h2>
         <div class="filter-row">
           <label>Region <select id="electionsRegion"></select></label>
+          <label>Jahrgang <select id="electionsJahrgang"></select></label>
           <button class="btn-secondary" id="electionsRefresh" type="button">Aktualisieren</button>
         </div>
         <div id="electionsResults"></div>
@@ -1566,6 +1567,25 @@ function barChart(data){
   return `<svg viewBox="0 0 ${leftPad+chartW+40} ${height}" class="chart-bar">${rows}</svg>`;
 }
 
+// Balkendiagramm im "Tagesschau"-Stil: Parteifarben, Prozent + absolute Zahl.
+function partyBarChart(data){
+  if(!data.length) return `<p class="chart-empty">Noch keine Stimmen.</p>`;
+  const total = data.reduce((s,d)=>s+d.value,0) || 1;
+  const max = Math.max(1, ...data.map(d=>d.value));
+  const barH=24, gap=11, leftPad=100, chartW=230, rightPad=64;
+  const height = data.length*(barH+gap);
+  let rows = "";
+  data.forEach((d,i)=>{
+    const y = i*(barH+gap);
+    const w = (d.value/max)*chartW;
+    const pct = Math.round((d.value/total)*1000)/10;
+    rows += `<text x="${leftPad-8}" y="${y+barH*0.65}" class="bar-label">${escapeHtml(d.label)}</text>`;
+    rows += `<rect x="${leftPad}" y="${y}" width="${w.toFixed(1)}" height="${barH}" fill="${partyColorHex(d.label)}" stroke="var(--ink)" stroke-width="1"></rect>`;
+    rows += `<text x="${leftPad+w+8}" y="${y+barH*0.65}" class="bar-value">${pct}% (${d.value})</text>`;
+  });
+  return `<svg viewBox="0 0 ${leftPad+chartW+rightPad} ${height}" class="chart-bar party-bar-chart">${rows}</svg>`;
+}
+
 function isTestRecord(r){
   return !!r && r.klasse === "1";
 }
@@ -1585,6 +1605,64 @@ function computePartyTotals(records, region){
     if(r.councilPartyVote){
       totals[r.councilPartyVote] = (totals[r.councilPartyVote]||0) + 3;
     }
+  });
+  return totals;
+}
+
+// Manche Parteien heißen je nach Region leicht anders (z. B. "GRÜNE" vs.
+// "BÜNDNIS 90/DIE GRÜNEN"). Für ein regionsübergreifendes Gesamtbild werden
+// sie hier auf einen gemeinsamen Namen zusammengeführt.
+const PARTY_ALIASES = {
+  "BÜNDNIS 90/DIE GRÜNEN": "GRÜNE",
+  "AfD Niedersachsen": "AfD"
+};
+function normalizeParty(party){
+  return PARTY_ALIASES[party] || party;
+}
+
+// Für die regionsübergreifende Gesamtansicht zählen nur die bundesweit
+// bekannten Parteien einzeln - alles andere (lokale Wählergruppen wie BLU,
+// Einzelbewerber:innen usw.) wird zu "Sonstige" zusammengefasst. In den
+// Ergebnissen einzelner Regionen bleiben diese Gruppen weiterhin mit ihrem
+// echten Namen sichtbar.
+const KNOWN_PARTIES = new Set(["CDU","SPD","GRÜNE","FDP","AfD","Die Linke"]);
+
+// Offizielle Parteifarben für Diagramme im "Tagesschau"-Stil.
+const PARTY_COLORS = {
+  "CDU": "#1A1A1A",
+  "SPD": "#E3000F",
+  "GRÜNE": "#46962B",
+  "FDP": "#FFC72C",
+  "AfD": "#009EE0",
+  "Die Linke": "#BE3075",
+  "Sonstige": "#9AA0A6"
+};
+const PARTY_COLORS_RGB = {
+  "CDU": [26,26,26],
+  "SPD": [227,0,15],
+  "GRÜNE": [70,150,43],
+  "FDP": [255,199,44],
+  "AfD": [0,158,224],
+  "Die Linke": [190,48,117],
+  "Sonstige": [154,160,166]
+};
+function partyColorHex(party){
+  return PARTY_COLORS[normalizeParty(party)] || "#6B6F76";
+}
+function partyColorRGB(party){
+  return PARTY_COLORS_RGB[normalizeParty(party)] || [107,111,118];
+}
+
+function computeOverallPartyTotals(completedRecords){
+  const totals = {};
+  REGIONS.forEach(region => {
+    const recs = completedRecords.filter(r => r.region === region);
+    const regionTotals = computePartyTotals(recs, region);
+    Object.entries(regionTotals).forEach(([party,count]) => {
+      let norm = normalizeParty(party);
+      if(!KNOWN_PARTIES.has(norm)) norm = "Sonstige";
+      totals[norm] = (totals[norm]||0) + count;
+    });
   });
   return totals;
 }
@@ -1651,9 +1729,10 @@ async function initAdmin(){
 
   document.getElementById("statsRegion").innerHTML = regionOptionsHTML(true);
   document.getElementById("electionsRegion").innerHTML = regionOptionsHTML(false);
-  document.getElementById("turnoutJahrgang").innerHTML =
-    `<option value="all">Alle Jahrgänge</option>` +
+  const jahrgangOptionsHTML = `<option value="all">Alle Jahrgänge</option>` +
     [8,9,10,11,12,13].map(j=>`<option value="${j}">Jahrgang ${j}</option>`).join("");
+  document.getElementById("electionsJahrgang").innerHTML = jahrgangOptionsHTML;
+  document.getElementById("turnoutJahrgang").innerHTML = jahrgangOptionsHTML;
 
   setupAdminTabs();
   setupAdminFilters();
@@ -1703,6 +1782,7 @@ function setupAdminFilters(){
   document.getElementById("statsRefresh").addEventListener("click", async ()=>{ await refreshRecords(); renderStatsTab(); });
 
   document.getElementById("electionsRegion").addEventListener("change", renderElectionsTab);
+  document.getElementById("electionsJahrgang").addEventListener("change", renderElectionsTab);
   document.getElementById("electionsRefresh").addEventListener("click", async ()=>{ await refreshRecords(); renderElectionsTab(); });
   document.getElementById("participantsSearch").addEventListener("input", renderParticipantsList);
   document.getElementById("participantsStatusFilter").addEventListener("change", renderParticipantsList);
@@ -1738,8 +1818,12 @@ function renderStatsTab(){
     completed.forEach(r => { if(r.jahrgang) byJahrgang[r.jahrgang] = (byJahrgang[r.jahrgang]||0)+1; });
     const jahrgangData = [8,9,10,11,12,13].map(j => ({label:"Jahrgang "+j, value: byJahrgang[j]||0}));
 
+    const overallParty = computeOverallPartyTotals(completed);
+    const overallPartyData = Object.entries(overallParty).sort((a,b)=>b[1]-a[1]).map(([p,v]) => ({label:p, value:v}));
+
     out.innerHTML = `
       <p>${completed.length} abgeschlossene Stimmen im gewählten Filter.</p>
+      <div class="chart-block"><h3>Gesamtergebnis nach Partei (alle Regionen)</h3>${partyBarChart(overallPartyData)}</div>
       <div class="chart-block"><h3>Teilnahme nach Region</h3>${pieChart(regionData)}</div>
       <div class="chart-block"><h3>Teilnahme nach Jahrgang</h3>${barChart(jahrgangData)}</div>
     `;
@@ -1778,8 +1862,9 @@ let currentRegionRecords = [];
 
 function renderElectionsTab(){
   const region = document.getElementById("electionsRegion").value || REGIONS[0];
+  const jgFilter = document.getElementById("electionsJahrgang").value || "all";
   const out = document.getElementById("electionsResults");
-  currentRegionRecords = allRecords.filter(r => r.region === region);
+  currentRegionRecords = allRecords.filter(r => r.region === region && (jgFilter==="all" ? true : String(r.jahrgang) === jgFilter));
   const completedRecords = currentRegionRecords.filter(r => r.completed && !isTestRecord(r));
 
   const mayorCounts = {};
@@ -1802,6 +1887,7 @@ function renderElectionsTab(){
     : "";
 
   out.innerHTML = `
+    <p>${completedRecords.length} abgeschlossene Stimmen${jgFilter==="all" ? "" : " in Jahrgang "+jgFilter}.</p>
     <h3>Ergebnis Bürgermeister/in</h3>
     <ol class="result-list">${mayorList || "<li>Noch keine Stimmen.</li>"}</ol>
     <h3>Ergebnis Gemeinderat (Einzelstimmen)</h3>
@@ -1954,18 +2040,102 @@ function downloadFinalPdf(){
     try{
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF();
-      let y = 20;
-      doc.setFontSize(16);
-      doc.text(lines[0], 14, y); y += 8;
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+
+      function drawBarChart(data, x, y, width, barHeight, gap){
+        const total = data.reduce((s,d)=>s+d.value,0) || 1;
+        const max = Math.max(1, ...data.map(d=>d.value));
+        let curY = y;
+        data.forEach((d,i)=>{
+          const color = partyColorRGB(d.label);
+          const pct = Math.round((d.value/total)*1000)/10;
+          doc.setFontSize(9);
+          doc.setTextColor(60,60,60);
+          doc.text(`${d.label} — ${pct}% (${d.value})`, x, curY);
+          curY += 3;
+          const barW = Math.max(width * (d.value / max), 0.6);
+          doc.setDrawColor(30,42,68);
+          doc.setFillColor(color[0], color[1], color[2]);
+          doc.rect(x, curY, barW, barHeight, "FD");
+          curY += barHeight + gap;
+        });
+        return curY;
+      }
+
+      const completed = allRecords.filter(r => r.completed && !isTestRecord(r));
+
+      // Kopfbereich
+      doc.setFillColor(30,42,68);
+      doc.rect(0, 0, pageWidth, 22, "F");
+      doc.setTextColor(255,255,255);
+      doc.setFontSize(17);
+      doc.text("Kommunalwahl 2026 – Endergebnis", 14, 14);
+
+      let y = 32;
       doc.setFontSize(10);
-      doc.text(lines[1], 14, y); y += 6;
-      doc.text(lines[2], 14, y); y += 10;
-      doc.setFontSize(11);
-      for(let i=4;i<lines.length;i++){
-        if(y > 280){ doc.addPage(); y = 20; }
-        doc.text(lines[i], 14, y);
+      doc.setTextColor(90,90,90);
+      doc.text("Erstellt am " + new Date().toLocaleDateString("de-DE"), 14, y); y += 5;
+      doc.text("Abgeschlossene Stimmen insgesamt: " + completed.length, 14, y); y += 10;
+
+      // Großes Gesamtdiagramm: Parteien über alle Regionen
+      const overallParty = computeOverallPartyTotals(completed);
+      const partyEntries = Object.entries(overallParty).sort((a,b)=>b[1]-a[1]).map(([label,value])=>({label,value}));
+      doc.setFontSize(13);
+      doc.setTextColor(30,42,68);
+      doc.text("Gesamtergebnis nach Partei (alle Regionen)", 14, y);
+      y += 6;
+      if(partyEntries.length){
+        y = drawBarChart(partyEntries, 14, y, pageWidth - 28, 6, 4);
+      } else {
+        doc.setFontSize(10);
+        doc.setTextColor(120,120,120);
+        doc.text("Noch keine Stimmen.", 14, y);
         y += 6;
       }
+      y += 8;
+
+      // Kurzüberblick je Region mit kleinem Balkendiagramm
+      doc.setFontSize(13);
+      doc.setTextColor(30,42,68);
+      doc.text("Ergebnis je Region", 14, y);
+      y += 8;
+
+      REGIONS.forEach(region => {
+        const recs = completed.filter(r => r.region === region);
+        const partyCountForRegion = recs.length ? Object.keys(computePartyTotals(recs, region)).length : 0;
+        const blockHeight = recs.length ? (17 + partyCountForRegion * 9.5) : 12;
+        if(y + blockHeight > pageHeight - 15){ doc.addPage(); y = 20; }
+
+        doc.setFontSize(12);
+        doc.setTextColor(30,42,68);
+        doc.text(region, 14, y);
+        y += 5;
+
+        if(!recs.length){
+          doc.setFontSize(9);
+          doc.setTextColor(120,120,120);
+          doc.text("Noch keine abgeschlossenen Stimmen.", 16, y);
+          y += 8;
+          return;
+        }
+
+        const mayorCounts = {};
+        recs.forEach(r => { if(r.mayorVote) mayorCounts[r.mayorVote] = (mayorCounts[r.mayorVote]||0)+1; });
+        const mayorWinner = Object.entries(mayorCounts).sort((a,b)=>b[1]-a[1])[0];
+        doc.setFontSize(9);
+        doc.setTextColor(80,80,80);
+        doc.text(`Bürgermeister/in: ${mayorWinner ? mayorWinner[0]+" ("+mayorWinner[1]+" Stimmen)" : "keine Angabe"}`, 16, y);
+        y += 5;
+
+        const partyTotals = computePartyTotals(recs, region);
+        const partyData = Object.entries(partyTotals).sort((a,b)=>b[1]-a[1]).map(([p,v])=>({label:p, value:v}));
+        if(partyData.length){
+          y = drawBarChart(partyData, 16, y, pageWidth - 32, 4, 2.5);
+        }
+        y += 6;
+      });
+
       doc.save("Kommunalwahl-2026-Endergebnis.pdf");
       return;
     }catch(e){ console.error(e); }
