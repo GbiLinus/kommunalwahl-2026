@@ -11,12 +11,19 @@
         "source": "github",
         "repo": "JuliusBrussee/caveman"
       }
+    },
+    "claude-plugins-official": {
+      "source": {
+        "source": "github",
+        "repo": "anthropics/claude-plugins-official"
+      }
     }
   },
   "enabledPlugins": {
     "commit-commands@kommunalwahl-plugins": true,
     "claude-code-setup@kommunalwahl-plugins": true,
     "frontend-design@kommunalwahl-plugins": true,
-    "caveman@caveman": true
+    "caveman@caveman": true,
+    "security-guidance@claude-plugins-official": true
   }
 }
