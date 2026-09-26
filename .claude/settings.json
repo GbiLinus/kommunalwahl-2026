@@ -1,4 +1,22 @@
 {
-  "enabledPlugins": {},
-  "extraKnownMarketplaces": {}
+  "extraKnownMarketplaces": {
+    "kommunalwahl-plugins": {
+      "source": {
+        "source": "directory",
+        "path": "./.claude/plugins"
+      }
+    },
+    "caveman": {
+      "source": {
+        "source": "github",
+        "repo": "JuliusBrussee/caveman"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "commit-commands@kommunalwahl-plugins": true,
+    "claude-code-setup@kommunalwahl-plugins": true,
+    "frontend-design@kommunalwahl-plugins": true,
+    "caveman@caveman": true
+  }
 }
